@@ -1,0 +1,16 @@
+---
+title: "Cloud Computing"
+---
+
+::: {.callout-note collapse="false"}
+## CloudCourse.exe — Home
+
+Welcome! This site contains weekly notes, examples, and resources.
+
+- Start here: **Week 1 — Cloud Big Picture**
+- Expect a mix of concepts, architecture, security, and hands-on labs.
+:::
+
+## Navigation
+
+- [Week 1 — Cloud Big Picture](week1/index.qmd)

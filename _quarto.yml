@@ -1,0 +1,21 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Cloud Computing"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: week1/index.qmd
+        text: Week 1 — Cloud Big Picture
+
+format:
+  html:
+    theme: cosmo
+    css: styles/win95.css
+    toc: true
+    toc-location: right
+    smooth-scroll: true
+    callout-appearance: minimal

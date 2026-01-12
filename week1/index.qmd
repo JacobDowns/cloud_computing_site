@@ -1,0 +1,142 @@
+---
+title: "Week 1 — Cloud Computing: Big Picture"
+---
+
+::: {.callout-note collapse="false"}
+## Week1.txt — Goals
+
+By the end of Week 1 you should be able to explain:
+
+-   what problems led to cloud computing
+-   what changed to make cloud feasible at scale
+-   IaaS vs PaaS vs SaaS (and why boundaries blur)
+-   the major players and what they sell
+-   the shared responsibility model (first pass)
+:::
+
+::: {.callout-note collapse="false"}
+## cloud.png — Conceptual Picture
+
+![](images/The%205%20Biggest%20Cloud%20Computing%20Trends%20In%202021.jpg)
+:::
+
+## The framing question
+
+::: {.callout-important collapse="false"}
+## Question.exe
+
+**Why did cloud computing emerge, and why did it replace traditional ways of running software?**
+:::
+
+## Before the cloud: what was hard?
+
+-   Buying servers required capital and lead time
+-   Scaling often took weeks or months
+-   Ops work (patching, backups, networking, monitoring) slowed everything down
+-   Capacity planning was a constant gamble
+
+::: {.callout-caution collapse="false"}
+## Common failure mode
+
+**Overprovisioning** wastes money; **underprovisioning** causes outages. Cloud’s “elasticity” is largely an answer to this.
+:::
+
+:::: {.callout-note collapse="false"}
+## oldschool.png — Old School Server
+
+::: win95-media
+![](images/rack_1.jpg)
+:::
+::::
+
+## What enabled the cloud?
+
+Cloud wasn’t one invention — it was a convergence:
+
+-   **Virtualization** (better utilization + isolation)
+-   **Reliable networking** (remote resources feel close)
+-   **Automation + APIs** (provision by software)
+-   **Economies of scale** (specialized ops and bulk purchasing)
+
+:::: {.callout-note collapse="false"}
+## newschool.png — New School Data Center
+
+::: win95-media
+![](images/68dacddb7c8d02b89fea4b7f_dc.jpg)
+:::
+::::
+
+## A working definition
+
+Cloud computing is the on-demand delivery of computing resources over the internet, typically with:
+
+-   self-service provisioning
+-   elastic scaling (up/down)
+-   pay-as-you-go pricing
+-   managed services that increase abstraction
+
+## Service models: IaaS / PaaS / SaaS
+
+::: {.callout-tip collapse="false"}
+## Models.dll — “Who manages what?”
+
+-   **IaaS (Infrastructure as a Service)**: you manage OS/runtime/app; provider manages physical infrastructure\
+-   **PaaS (Platform as a Service)**: you manage code+data; provider manages runtime/scaling/infrastructure\
+-   **SaaS (Software as a Service)**: provider manages everything; you use the product
+:::
+
+| Service Model | What you manage | What the provider manages | Familiar examples students may know |
+|-----------------|-----------------|-----------------|---------------------|
+| **IaaS** (Infrastructure as a Service) | OS, runtime, application, data | Physical servers, storage, networking, virtualization | AWS EC2, Google Compute Engine, Azure Virtual Machines, DigitalOcean Droplets |
+| **PaaS** (Platform as a Service) | Application code and data | OS, runtime, scaling, infrastructure | Firebase, Heroku, Google App Engine, Cloud Run, Vercel |
+| **SaaS** (Software as a Service) | Configuration and usage | Everything (app, runtime, infra, scaling) | Gmail, Google Docs, GitHub, Slack, Canvas, Zoom |
+
+### Reality check: boundaries blur
+
+These categories are mental models, not strict boxes. A good question is always:
+
+> “Who is responsible for which layer?”
+
+## Major industry players
+
+-   AWS
+-   Microsoft Azure
+-   Google Cloud
+
+Also important in the ecosystem: - IBM, Oracle, Alibaba - DigitalOcean (developer-focused niche)
+
+:::: {.callout-note collapse="false"}
+## bigmoney.png — Some Players in the Cloud Industry
+
+::: win95-media
+![](images/top-10-cloud-providers.png)
+:::
+::::
+
+## What providers actually sell
+
+Not just “servers”:
+
+-   compute (VMs, containers, serverless)
+-   storage (object/block/file)
+-   databases (managed SQL/NoSQL)
+-   networking (VPCs, load balancing)
+-   observability (logging/monitoring)
+-   security + identity tooling
+-   data + ML platforms
+
+## Shared responsibility model (first pass)
+
+Providers secure the **cloud**. Customers secure what’s **in** the cloud.
+
+Customer responsibilities often include: - IAM configuration and least privilege - data access controls - application vulnerabilities - secrets handling
+
+## Discussion prompts
+
+::: {.callout-note collapse="true"}
+## Discussion.exe (click to expand)
+
+1.  What’s the biggest risk of building systems only by clicking in a console?
+2.  Where do you expect vendor lock-in to show up most?
+3.  When is the cloud *not* the right choice?
+:::

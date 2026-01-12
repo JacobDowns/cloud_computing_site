@@ -1,0 +1,93 @@
+[
+  {
+    "objectID": "week1/index.html",
+    "href": "week1/index.html",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "",
+    "text": "NoteWeek1.txt — Goals\n\n\n\n\n\nBy the end of Week 1 you should be able to explain:\n\nwhat problems led to cloud computing\nwhat changed to make cloud feasible at scale\nIaaS vs PaaS vs SaaS (and why boundaries blur)\nthe major players and what they sell\nthe shared responsibility model (first pass)"
+  },
+  {
+    "objectID": "week1/index.html#the-framing-question",
+    "href": "week1/index.html#the-framing-question",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "The framing question",
+    "text": "The framing question\n\n\n\n\n\n\nImportantQuestion.exe\n\n\n\n\n\nWhy did cloud computing emerge, and why did it replace traditional ways of running software?"
+  },
+  {
+    "objectID": "week1/index.html#before-the-cloud-what-was-hard",
+    "href": "week1/index.html#before-the-cloud-what-was-hard",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "Before the cloud: what was hard?",
+    "text": "Before the cloud: what was hard?\n\nBuying servers required capital and lead time\nScaling often took weeks or months\nOps work (patching, backups, networking, monitoring) slowed everything down\nCapacity planning was a constant gamble\n\n\n\n\n\n\n\nCautionCommon failure mode\n\n\n\n\n\nOverprovisioning wastes money; underprovisioning causes outages. Cloud’s “elasticity” is largely an answer to this.\n\n\n\n\n\n\n\n\n\nNoteoldschool.png — Old School Server"
+  },
+  {
+    "objectID": "week1/index.html#what-enabled-the-cloud",
+    "href": "week1/index.html#what-enabled-the-cloud",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "What enabled the cloud?",
+    "text": "What enabled the cloud?\nCloud wasn’t one invention — it was a convergence:\n\nVirtualization (better utilization + isolation)\nReliable networking (remote resources feel close)\nAutomation + APIs (provision by software)\nEconomies of scale (specialized ops and bulk purchasing)\n\n\n\n\n\n\n\nNotenewschool.png — New School Data Center"
+  },
+  {
+    "objectID": "week1/index.html#a-working-definition",
+    "href": "week1/index.html#a-working-definition",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "A working definition",
+    "text": "A working definition\nCloud computing is the on-demand delivery of computing resources over the internet, typically with:\n\nself-service provisioning\nelastic scaling (up/down)\npay-as-you-go pricing\nmanaged services that increase abstraction"
+  },
+  {
+    "objectID": "week1/index.html#service-models-iaas-paas-saas",
+    "href": "week1/index.html#service-models-iaas-paas-saas",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "Service models: IaaS / PaaS / SaaS",
+    "text": "Service models: IaaS / PaaS / SaaS\n\n\n\n\n\n\nTipModels.dll — “Who manages what?”\n\n\n\n\n\n\nIaaS (Infrastructure as a Service): you manage OS/runtime/app; provider manages physical infrastructure\n\nPaaS (Platform as a Service): you manage code+data; provider manages runtime/scaling/infrastructure\n\nSaaS (Software as a Service): provider manages everything; you use the product\n\n\n\n\n\n\n\n\n\n\n\n\n\nService Model\nWhat you manage\nWhat the provider manages\nFamiliar examples students may know\n\n\n\n\nIaaS (Infrastructure as a Service)\nOS, runtime, application, data\nPhysical servers, storage, networking, virtualization\nAWS EC2, Google Compute Engine, Azure Virtual Machines, DigitalOcean Droplets\n\n\nPaaS (Platform as a Service)\nApplication code and data\nOS, runtime, scaling, infrastructure\nFirebase, Heroku, Google App Engine, Cloud Run, Vercel\n\n\nSaaS (Software as a Service)\nConfiguration and usage\nEverything (app, runtime, infra, scaling)\nGmail, Google Docs, GitHub, Slack, Canvas, Zoom\n\n\n\n\nReality check: boundaries blur\nThese categories are mental models, not strict boxes. A good question is always:\n\n“Who is responsible for which layer?”"
+  },
+  {
+    "objectID": "week1/index.html#major-industry-players",
+    "href": "week1/index.html#major-industry-players",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "Major industry players",
+    "text": "Major industry players\n\nAWS\nMicrosoft Azure\nGoogle Cloud\n\nAlso important in the ecosystem: - IBM, Oracle, Alibaba - DigitalOcean (developer-focused niche)\n\n\n\n\n\n\nNotebigmoney.png — Some Players in the Cloud Industry"
+  },
+  {
+    "objectID": "week1/index.html#what-providers-actually-sell",
+    "href": "week1/index.html#what-providers-actually-sell",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "What providers actually sell",
+    "text": "What providers actually sell\nNot just “servers”:\n\ncompute (VMs, containers, serverless)\nstorage (object/block/file)\ndatabases (managed SQL/NoSQL)\nnetworking (VPCs, load balancing)\nobservability (logging/monitoring)\nsecurity + identity tooling\ndata + ML platforms"
+  },
+  {
+    "objectID": "week1/index.html#shared-responsibility-model-first-pass",
+    "href": "week1/index.html#shared-responsibility-model-first-pass",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "Shared responsibility model (first pass)",
+    "text": "Shared responsibility model (first pass)\nProviders secure the cloud. Customers secure what’s in the cloud.\nCustomer responsibilities often include: - IAM configuration and least privilege - data access controls - application vulnerabilities - secrets handling"
+  },
+  {
+    "objectID": "week1/index.html#discussion-prompts",
+    "href": "week1/index.html#discussion-prompts",
+    "title": "Week 1 — Cloud Computing: Big Picture",
+    "section": "Discussion prompts",
+    "text": "Discussion prompts\n\n\n\n\n\n\nNoteDiscussion.exe (click to expand)\n\n\n\n\n\n\nWhat’s the biggest risk of building systems only by clicking in a console?\nWhere do you expect vendor lock-in to show up most?\nWhen is the cloud not the right choice?"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Cloud Computing",
+    "section": "",
+    "text": "NoteCloudCourse.exe — Home\n\n\n\n\n\nWelcome! This site contains weekly notes, examples, and resources.\n\nStart here: Week 1 — Cloud Big Picture\nExpect a mix of concepts, architecture, security, and hands-on labs."
+  },
+  {
+    "objectID": "index.html#navigation",
+    "href": "index.html#navigation",
+    "title": "Cloud Computing",
+    "section": "Navigation",
+    "text": "Navigation\n\nWeek 1 — Cloud Big Picture"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site"
+  }
+]
