@@ -1,0 +1,272 @@
+---
+title: "Lecture 3 — Web & Network Fundamentals for the Cloud"
+---
+
+::: {.callout-note collapse="false"}
+## agenda.txt — Today’s plan
+
+Today we’ll focus on the **web and networking fundamentals** that help explain what actually happens when you deploy an app to the cloud.
+
+1. How web requests work (client → server)
+2. DNS and naming
+3. HTTP vs HTTPS
+4. Public vs private exposure
+5. Load balancers and “invisible infrastructure”
+6. What really happened when you deployed to Firebase
+:::
+
+## Why this lecture exists
+
+::: {.callout-important collapse="false"}
+## context.exe — Connecting the dots
+
+In Lab 1, you deployed a real web app and got a public URL.
+
+This lecture answers the question:
+
+**What actually happens between a browser and a cloud-hosted application?**
+
+Understanding this makes later topics—security, CI/CD, databases, and cloud architecture—much easier to reason about.
+:::
+
+---
+
+## Clients, servers, and requests
+
+::: {.callout-note collapse="false"}
+## request.exe — The core web model
+
+At a high level, the web works like this:
+
+- A **client** (usually a browser) sends a request
+- A **server** receives the request
+- The server sends back a response
+
+This request–response pattern is the foundation of almost everything on the web.
+:::
+
+### Statelessness (important for cloud)
+
+::: {.callout-tip collapse="false"}
+## stateless.dll — Why this matters
+
+Most web requests are **stateless**:
+
+- The server does not remember previous requests by default
+- Each request must contain all the information needed to handle it
+
+This property makes it much easier to:
+- scale systems
+- load-balance traffic
+- replace failed servers
+
+Cloud platforms are built around this idea.
+:::
+
+---
+
+## URLs and DNS: names before machines
+
+::: {.callout-note collapse="false"}
+## dns.exe — How names become destinations
+
+When you visit a URL like:
+
+```
+https://my-app.web.app
+```
+
+your computer does **not** know where that is yet.
+
+It first asks the **Domain Name System (DNS)**:
+> “What IP address corresponds to this name?”
+:::
+
+### Why DNS exists
+
+::: {.callout-tip collapse="false"}
+## phonebook.txt — The internet’s directory
+
+DNS exists because:
+- IP addresses are hard to remember
+- Servers move and change
+- Cloud services scale dynamically
+
+Names stay stable even when the underlying infrastructure changes.
+:::
+
+### Further reading (recommended)
+
+::: {.callout-note collapse="true"}
+## reading.exe — DNS
+
+- Cloudflare Learning Center:  
+  **What is DNS?**  
+  https://www.cloudflare.com/learning/dns/what-is-dns/
+
+- Mozilla MDN:  
+  **How the Web Works — Domain names**  
+  https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/How_the_Web_works
+:::
+
+---
+
+## HTTP vs HTTPS
+
+::: {.callout-note collapse="false"}
+## http.exe — Talking to servers
+
+**HTTP** defines how clients and servers communicate:
+- request methods (GET, POST, etc.)
+- headers
+- responses and status codes
+:::
+
+### What HTTPS adds
+
+::: {.callout-important collapse="false"}
+## https.exe — Security by default in the cloud
+
+**HTTPS** adds two critical guarantees:
+
+1. **Encryption** — others cannot read the traffic
+2. **Identity** — you know who you are talking to
+
+Modern cloud platforms typically provide HTTPS automatically.
+:::
+
+### Why this matters for cloud
+
+::: {.callout-tip collapse="false"}
+## tls.dll — Managed security
+
+When you used Firebase Hosting:
+- HTTPS was enabled by default
+- Certificates were managed for you
+- You didn’t configure encryption manually
+
+This is an example of cloud providers **abstracting away complexity**.
+:::
+
+### Further reading
+
+::: {.callout-note collapse="true"}
+## reading.exe — HTTPS
+
+- Cloudflare Learning Center:  
+  **What is HTTPS?**  
+  https://www.cloudflare.com/learning/ssl/what-is-https/
+
+- Cloudflare Learning Center:  
+  **What happens in a TLS handshake?**  
+  https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/
+:::
+
+---
+
+## Public vs private: exposure as a design choice
+
+::: {.callout-note collapse="false"}
+## exposure.exe — Who can reach your service?
+
+In the cloud, one of the most important questions is:
+
+**Should this service be reachable from the public internet?**
+:::
+
+### Why exposure matters
+
+::: {.callout-warning collapse="false"}
+## risk.dll — Default assumptions
+
+- Public services will be scanned
+- Misconfigurations are common causes of breaches
+- Security often starts with *network exposure*, not authentication
+
+Cloud platforms force you to think explicitly about these boundaries.
+:::
+
+---
+
+## Load balancers: the invisible middle
+
+::: {.callout-note collapse="false"}
+## lb.exe — You rarely talk to a single server
+
+In cloud systems:
+
+- A single URL often represents **many machines**
+- A **load balancer** sits in front of them
+- Traffic is distributed automatically
+:::
+
+### Why load balancers matter
+
+::: {.callout-tip collapse="false"}
+## scale.dll — Reliability and elasticity
+
+Load balancers enable:
+- scaling up and down
+- replacing failed servers
+- zero-downtime updates
+
+Most cloud platforms hide load balancers from you—but they’re still there.
+:::
+
+---
+
+## What actually happened when you deployed
+
+::: {.callout-important collapse="false"}
+## lab1-review.exe — Putting it all together
+
+When you deployed your app to Firebase:
+
+1. You built static files (`dist/`)
+2. Files were uploaded to Firebase Hosting
+3. Firebase placed them behind:
+   - a CDN
+   - load balancers
+   - HTTPS endpoints
+4. DNS pointed your URL to that infrastructure
+
+You didn’t configure these pieces—but you benefited from them.
+:::
+
+---
+
+## Key takeaways
+
+::: {.callout-note collapse="false"}
+## takeaway.exe — Mental models to keep
+
+- The web is request–response
+- Names (DNS) matter more than machines
+- HTTPS is the default, not a luxury
+- Public vs private exposure is a design choice
+- Cloud platforms hide infrastructure—but it still exists
+:::
+
+---
+
+## Looking ahead
+
+::: {.callout-note collapse="false"}
+## next.exe — Why this matters later
+
+These ideas will come back when we discuss:
+- security and misconfigurations
+- CI/CD and automated deployments
+- infrastructure as code
+- databases and backend services
+
+Understanding the network makes the cloud make sense.
+:::
+
+::: {.callout-note collapse="true"}
+## discussion.exe — Questions to think about
+
+1. Which parts of this workflow did Firebase hide from you?
+2. What risks are reduced by managed HTTPS and load balancers?
+3. Where might you want *more* control instead of abstraction?
+:::

@@ -1,0 +1,193 @@
+---
+title: "Lecture 2 — Firebase + Vite: Tools Before the Lab"
+---
+
+::: {.callout-note collapse="false"}
+## agenda.txt — Today’s plan
+
+1.  **Quick review** of Lecture 1 (cloud big picture)
+2.  **Firebase.exe:** What it is, what it can do, and why we’re using it
+3.  **Alternatives.dll:** Other ways to host/deploy modern web apps
+4.  **Vite.ts:** What it is and why our template uses it
+5.  Transition into **Lab 1** (deploy your app to Firebase Hosting)
+:::
+
+## Quick review: last lecture in 5 minutes
+
+::: {.callout-note collapse="false"}
+## recap.exe — Big ideas to keep in your head
+
+-   Cloud computing = **on-demand resources + self-service + elasticity + pay-as-you-go**
+-   Service models: **IaaS / PaaS / SaaS** (boundaries blur)
+-   Providers sell more than servers: compute, storage, databases, networking, observability, security
+-   The key question: **“Who manages which layer?”**
+:::
+
+::: {.callout-important collapse="false"}
+## framing-question.exe
+
+Before we touch tools, remember the “why”:
+
+**If cloud is programmable infrastructure, what does that change about how we build and ship software?**
+:::
+
+## Firebase.exe — What is Firebase?
+
+::: {.callout-note collapse="false"}
+## firebase.txt — One sentence definition
+
+**Firebase is a developer platform** (from Google) that bundles common app needs—**hosting, authentication, databases, storage, messaging, analytics**, and more—behind friendly SDKs and a simple console.
+:::
+
+::: {.callout-note collapse="false"}
+## firebase.jpeg
+
+![Firebase Logo](images/download-3.png){fig-align="center"}
+:::
+
+### Why Firebase is a good first cloud tool
+
+::: {.callout-tip collapse="false"}
+## why-firebase.dll — Why we’re using it in Week 1
+
+Firebase is great for learning because it gives you:
+
+-   a **real deployment workflow** (build → deploy → public URL)
+-   a **managed hosting service** (you don’t manage servers)
+-   a path to deeper cloud ideas later (auth, DB, rules, functions, CI/CD)
+:::
+
+## What can Firebase do?
+
+### 1) Hosting (what we’re using today)
+
+::: {.callout-note collapse="false"}
+## hosting.exe — Firebase Hosting
+
+Firebase Hosting is production-grade hosting for web content. In practice, it’s ideal for **static** sites and **single-page apps**, deployed to a global CDN with one command.
+
+Key capabilities: - HTTPS by default - CDN caching for fast delivery - Simple deploy + rollback workflow
+:::
+
+**Today’s lab**: we will deploy the **Vite build output** (`dist/`) to Firebase Hosting.
+
+### 2) Authentication (app sign-in)
+
+::: {.callout-note collapse="true"}
+## auth.dll — App sign-in (not “logging into Firebase”)
+
+Firebase Authentication is a managed sign-in system (email/password, phone, and popular identity providers). This is authentication for *your app’s users*, not just your developer account.
+:::
+
+### 3) Databases (Firestore / Realtime Database)
+
+::: {.callout-note collapse="true"}
+## db.exe — Data in the cloud
+
+Firebase includes managed databases commonly used from frontend apps:
+
+-   **Cloud Firestore** (document/collection model)
+-   **Realtime Database** (JSON tree model)
+
+The key teaching concept later: **security rules** and “who can read/write what.”
+:::
+
+### 4) Storage (files)
+
+::: {.callout-note collapse="true"}
+## storage.bin — Images, files, uploads
+
+Firebase Storage is for user-generated files: - images, videos, PDFs - “upload a profile picture” - “submit an assignment screenshot”
+:::
+
+### 5) Functions and dynamic backends (later)
+
+::: {.callout-warning collapse="true"}
+## functions.sys — Server-side code (later)
+
+Firebase Hosting can be paired with Cloud Functions or Cloud Run for dynamic content and microservices.
+
+We are **not** doing this today. Week 1 stays “hosting-only” so the workflow is simple.
+:::
+
+## Firebase vs other options (Alternatives.dll)
+
+::: {.callout-tip collapse="false"}
+## alternatives.dll — Similar tools students will encounter
+
+**Firebase Hosting** is one member of a bigger ecosystem of deployment options.
+:::
+
+| Tool / Platform | What it’s great for | What you give up | Typical “Week 1” use |
+|------------------|------------------|------------------|------------------|
+| **Firebase Hosting** | Static + SPA hosting with easy path to auth/DB later | More ecosystem lock-in once you adopt many Firebase services | Deploy Vite build (`dist/`) |
+| **GitHub Pages** | Static sites and docs (very simple) | No backend, no DB/auth (without external services) | Host course sites / portfolios |
+| **Vercel / Netlify** | “Deploy from Git” frontend workflows, previews, SSR support | Can get complex with quotas and build settings | Deploy React/Next apps |
+| **Supabase** | Firebase-like experience but Postgres-centered | Different ecosystem and tradeoffs | DB + auth projects |
+| **Cloudflare Pages** | Fast static deploys + edge options | Different mental model | Static + edge experiments |
+
+## Vite.ts — What is Vite?
+
+::: {.callout-note collapse="false"}
+## vite.txt — One sentence definition
+
+**Vite is a frontend build tool** designed for a fast development experience: it runs a dev server with very fast hot-reload and produces an optimized production build.
+:::
+
+### The two Vite modes you should recognize
+
+::: {.callout-tip collapse="false"}
+## modes.dll — Dev vs Build
+
+Vite has two “personalities”:
+
+1.  **Dev mode**
+
+    ``` bash
+    npm run dev
+    ```
+
+    Runs a local dev server with fast refresh.
+
+2.  **Build mode**
+
+    ``` bash
+    npm run build
+    ```
+
+    Produces a production-ready static bundle (by default into `dist/`).
+:::
+
+### Why this matters for deployment
+
+::: {.callout-important collapse="false"}
+## dist.exe — The key idea for today
+
+**Firebase Hosting deploys files.** So we deploy the output of `npm run build`.
+
+For Vite, that output folder is:
+
+```         
+dist/
+```
+
+This is why we set the Firebase Hosting “public directory” to `dist`.
+:::
+
+
+## Transition to Lab 1
+
+::: {.callout-important collapse="false"}
+## launch.exe — What we’re about to do
+
+In [lab 1](../lab1/index.qmd), you will:
+
+1. Clone a git repo containing a simple [Vite app](https://github.com/Cloud-Course-Spring-2026/simple_firebase_app)
+2.  Build the app (`npm run build`)
+3.  Initialize Firebase Hosting (`firebase init hosting`)
+    -   public directory = `dist`
+    -   SPA rewrite = Yes
+    -   GitHub deploys = No
+4.  Deploy (`firebase deploy`)
+5.  Submit your live URL
+:::

@@ -1,9 +1,9 @@
 ---
-title: "Week 1 — Cloud Computing: Big Picture"
+title: "Lecture 1 — Cloud Computing: Big Picture"
 ---
 
 ::: {.callout-note collapse="false"}
-## Week1.txt — Goals
+## Lecture1.txt — Goals
 
 By the end of Week 1 you should be able to explain:
 

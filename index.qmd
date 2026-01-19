@@ -12,5 +12,7 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 
 ## Navigation
 
-- [Lecture 1 — Cloud Big Picture](week1/index.qmd)
+- [Lecture 1 — Cloud Big Picture](lecture1/index.qmd)
+- [Lecture 2 — Firebase Deployment](lecture2/index.qmd)
 - [Lab 1 — Deploying a Simple App](lab1/index.qmd)
+- [Lecture 3 — Web Fundamentals](lecture3/index.qmd)
