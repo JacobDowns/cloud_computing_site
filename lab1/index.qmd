@@ -1,0 +1,280 @@
+---
+title: "Lab 1 — Deploying a Web App to Firebase"
+---
+
+## Overview
+
+::: {.callout-note collapse="false"}
+## lab1.exe — What you are doing
+
+In this lab, you will deploy a simple web app to the cloud using **Firebase Hosting**.
+
+By the end of this lab, you will have:
+
+-   a locally running React + Vite app
+-   a production build of that app
+-   a public URL hosted on Firebase
+
+This lab focuses on deployment concepts, not frontend development.
+:::
+
+::: {.callout-note collapse="false"}
+## localhost.png
+
+![Localhost: The anti-cloud](images/localhost.jpeg){fig-align="center"}
+:::
+
+## Prerequisites
+
+::: {.callout-warning collapse="false"}
+## prereq.dll — Required software
+
+Before starting, make sure you have:
+
+-   **Node.js (LTS)** installed\
+    → https://nodejs.org\
+-   **Git** installed\
+-   A **GitHub account**
+-   A **Google account** (for Firebase)
+
+You will also need the **Firebase CLI**, which you will install below.
+:::
+
+## Step 0 — Accept the Assignment
+
+::: {.callout-note collapse="false"}
+## classroom.exe — GitHub Classroom
+
+1.  Click the GitHub Classroom assignment link.
+2.  Accept the assignment.
+3.  GitHub will create a **private repository** for you.
+4.  Clone that repository to your computer.
+
+``` bash
+git clone <your-repo-url>
+cd <your-repo-folder>
+```
+:::
+
+## Step 1 — Install Dependencies and Run Locally
+
+::: {.callout-note collapse="false"}
+## devserver.exe — Local development
+
+Install dependencies:
+
+``` bash
+npm install
+```
+
+Start the local development server:
+
+``` bash
+npm run dev
+```
+
+Open the URL shown in your terminal (usually `http://localhost:5173`).
+
+You should see the starter app.
+:::
+
+## Step 2 — Make a Small Edit
+
+::: {.callout-tip collapse="false"}
+## edit.txt — Required change
+
+Open `src/App.tsx` and make a **small visible change**, for example:
+
+-   Add your name
+-   Change the page title
+-   Add a short sentence
+
+Save the file and confirm the change appears in your browser.
+
+This confirms:
+
+-   your environment works
+-   you can modify the app
+:::
+
+## Step 3 — Build the Production Version
+
+::: {.callout-note collapse="false"}
+## build.exe — Creating deployable files
+
+Stop the dev server (`Ctrl+C`), then run:
+
+``` bash
+npm run build
+```
+
+This creates a folder called:
+
+```         
+dist/
+```
+
+This folder contains the **static files** that will be deployed.
+
+> **Important:** Firebase Hosting deploys the contents of `dist/`, not your source code.
+:::
+
+(Optional preview of the built site:)
+
+``` bash
+npm run preview
+```
+
+## Step 4 — Install and Log In to Firebase
+
+::: {.callout-note collapse="false"}
+## firebase-cli.exe — Setup
+
+Install the Firebase CLI:
+
+``` bash
+npm install -g firebase-tools
+```
+
+Log in:
+
+``` bash
+firebase login
+```
+
+A browser window will open — sign in with your Google account.
+:::
+
+## Step 5 — Create a Firebase Project
+
+::: {.callout-note collapse="false"}
+## project.exe — Cloud project
+
+Go to the Firebase Console:
+
+https://console.firebase.google.com
+
+1.  Click **Add project**
+2.  Give it a name (e.g., `cloud-lab1-yourname`)
+3.  You can disable Google Analytics for this lab
+
+Once created, return to your terminal.
+:::
+
+## Step 6 — Initialize Firebase Hosting
+
+::: {.callout-important collapse="false"}
+## init.exe — This step matters
+
+Run:
+
+``` bash
+firebase init hosting
+```
+
+Answer the prompts **exactly as follows**:
+
+-   **Public directory:**
+
+    ``` text
+    dist
+    ```
+
+-   **Configure as a single-page app (rewrite all URLs to /index.html)?**
+
+    ``` text
+    Yes
+    ```
+
+-   **Set up automatic builds and deploys with GitHub?**
+
+    ``` text
+    No
+    ```
+
+-   **Overwrite dist/index.html?**
+
+    ``` text
+    No
+    ```
+
+This creates `firebase.json`.
+:::
+
+## Step 7 — Associate the Folder with Your Firebase Project
+
+::: {.callout-note collapse="false"}
+## use.exe — Selecting the cloud project
+
+Tell Firebase **which project to deploy to**:
+
+``` bash
+firebase use --add
+```
+
+-   Select the project you just created
+-   Use the alias `default`
+
+This creates `.firebaserc`.
+:::
+
+## Step 8 — Deploy to Firebase Hosting
+
+::: {.callout-note collapse="false"}
+## deploy.exe — Going live
+
+Every time you deploy, **build first**:
+
+``` bash
+npm run build
+firebase deploy
+```
+
+When the command finishes, Firebase will print a URL like:
+
+```         
+https://<project-id>.web.app
+```
+
+Open it in your browser — your app should be live.
+:::
+
+## Step 9 — Verify and Reflect
+
+::: {.callout-tip collapse="false"}
+## checklist.txt — You are done if:
+
+-   Your site loads at a Firebase URL
+-   Your edit from Step 2 appears
+-   You did **not** commit `dist/` to GitHub
+
+Congratulations — you deployed a real cloud-hosted app.
+:::
+
+## Common Mistakes (Read This If Something Breaks)
+
+::: {.callout-warning collapse="true"}
+## errorlog.txt — Troubleshooting
+
+**Site shows Firebase welcome page** - You did not set the public directory to `dist`
+
+**Error: public directory does not exist** - Run `npm run build` before deploying
+
+**React routes return 404** - You answered “No” to SPA rewrite — update `firebase.json`
+
+**Permission errors** - Run `firebase logout` then `firebase login`
+:::
+
+## What You Just Learned (Preview)
+
+::: {.callout-note collapse="false"}
+## takeaway.exe — Concepts
+
+You practiced:
+
+-   separating **source code** from **build artifacts**
+-   deploying static assets to a managed cloud service
+-   using a CLI to provision and manage cloud resources
+
+Next, we’ll look at how to **automate this workflow** using GitHub Actions.
+:::

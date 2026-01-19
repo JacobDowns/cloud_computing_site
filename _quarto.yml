@@ -7,9 +7,7 @@ website:
   navbar:
     left:
       - href: index.qmd
-        text: Home
-      - href: week1/index.qmd
-        text: Week 1 — Cloud Big Picture
+        text: Home 
 
 format:
   html:

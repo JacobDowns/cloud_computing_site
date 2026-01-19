@@ -1,8 +1,8 @@
 /* ---------------------------
-   Windows 95-ish Quarto theme
-   Collapsible Win95 windows via Quarto callouts
+   Windows 95–ish Quarto Theme
    --------------------------- */
 
+/* ---- Color palette ---- */
 :root{
   --win-bg: #c0c0c0;
   --win-dark: #404040;
@@ -12,21 +12,21 @@
   --desktop-teal: #008080;
 }
 
-/* Page background + default font */
+/* ---- Page background + font ---- */
 body {
   background: var(--desktop-teal);
   color: var(--win-text);
   font-family: Tahoma, "MS Sans Serif", "Segoe UI", sans-serif;
 }
 
-/* Center main content */
+/* ---- Center main content ---- */
 #quarto-content {
   max-width: 1100px;
   margin: 18px auto;
   padding: 0;
 }
 
-/* Main article as a big “desktop window” */
+/* ---- Main article as a big window ---- */
 main.content {
   background: var(--win-bg);
   border: 2px solid #000;
@@ -35,7 +35,9 @@ main.content {
   border-radius: 2px;
 }
 
-/* Code */
+/* ---------------------------
+   Code styling
+   --------------------------- */
 pre, code {
   font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
 }
@@ -55,7 +57,9 @@ p code, li code {
   border-radius: 2px;
 }
 
-/* TOC styling */
+/* ---------------------------
+   Table of Contents
+   --------------------------- */
 #TOC, .toc {
   background: var(--win-bg);
   border: 2px solid #000;
@@ -66,7 +70,6 @@ p code, li code {
 
 /* ---------------------------
    Win95 Callout Styling
-   (works for both collapsed (details) and non-collapsed (div) callouts)
    --------------------------- */
 
 /* Outer frame */
@@ -76,16 +79,16 @@ p code, li code {
   border-radius: 2px !important;
   box-shadow: 3px 3px 0 #000 !important;
   margin: 14px 0 !important;
-  overflow: hidden; /* keeps titlebar flush */
+  overflow: hidden;
 }
 
-/* Remove Quarto’s icon column if present */
+/* Remove Quarto icon column */
 .callout .callout-icon-container,
 .callout .callout-icon {
   display: none !important;
 }
 
-/* Titlebar (for details-based callouts) */
+/* Titlebar (collapsible) */
 details.callout > summary.callout-header {
   background: var(--win-blue) !important;
   color: #fff !important;
@@ -96,15 +99,15 @@ details.callout > summary.callout-header {
   justify-content: space-between !important;
   cursor: pointer !important;
   user-select: none;
-  list-style: none; /* remove default marker space */
+  list-style: none;
 }
 
-/* Hide default disclosure marker */
+/* Hide default marker */
 details.callout > summary.callout-header::-webkit-details-marker {
   display: none;
 }
 
-/* Titlebar (for non-collapsible callouts, just in case) */
+/* Titlebar (non-collapsible fallback) */
 div.callout > div.callout-header {
   background: var(--win-blue) !important;
   color: #fff !important;
@@ -115,7 +118,7 @@ div.callout > div.callout-header {
   justify-content: space-between !important;
 }
 
-/* Title text container */
+/* Title text */
 .callout .callout-title-container {
   color: #fff !important;
   white-space: nowrap;
@@ -123,41 +126,146 @@ div.callout > div.callout-header {
   text-overflow: ellipsis;
 }
 
-/* Body/content area */
+/* Body */
 .callout .callout-body,
 .callout .callout-content {
   padding: 12px 14px !important;
   background: var(--win-bg) !important;
 }
 
-/* Add Win95-style [+]/[–] indicator on collapsible callouts */
-details.callout > summary.callout-header .callout-title-container::after {
+/* [+] / [–] indicator */
+details.callout > summary.callout-header
+.callout-title-container::after {
   content: " [–]";
   color: #fff;
   font-weight: 700;
   margin-left: 10px;
 }
 
-details.callout:not([open]) > summary.callout-header .callout-title-container::after {
+details.callout:not([open]) > summary.callout-header
+.callout-title-container::after {
   content: " [+]";
 }
 
-/* Optional: focus outline for keyboard users */
+/* Focus outline */
 details.callout > summary.callout-header:focus-visible {
   outline: 2px dotted #fff;
   outline-offset: 2px;
 }
 
-/* Center media horizontally inside Win95 callouts */
+/* ---------------------------
+   Media blocks inside callouts
+   --------------------------- */
 .win95-media {
   display: flex;
-  justify-content: center;   /* horizontal centering */
-  align-items: flex-start;   /* don’t vertically center */
+  justify-content: center;
+  align-items: flex-start;
   padding: 6px;
 }
 
-/* Image sizing */
 .win95-media img {
   max-width: 100%;
   height: auto;
+}
+
+/* ---------------------------
+   Navbar as Win95 Taskbar
+   --------------------------- */
+.navbar {
+  background: var(--win-bg) !important;
+  border-top: 2px solid var(--win-light) !important;
+  border-left: 2px solid var(--win-light) !important;
+  border-right: 2px solid var(--win-dark) !important;
+  border-bottom: 2px solid var(--win-dark) !important;
+  box-shadow: 2px 2px 0 #000 !important;
+  padding: 6px 8px !important;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* Regular nav buttons */
+.navbar .navbar-nav .nav-link {
+  color: #000 !important;
+  padding: 4px 10px !important;
+  margin-right: 6px !important;
+  background: var(--win-bg) !important;
+  border-top: 2px solid var(--win-light) !important;
+  border-left: 2px solid var(--win-light) !important;
+  border-right: 2px solid var(--win-dark) !important;
+  border-bottom: 2px solid var(--win-dark) !important;
+  box-shadow: 1px 1px 0 #000 !important;
+  border-radius: 2px !important;
+}
+
+/* Hover */
+.navbar .navbar-nav .nav-link:hover {
+  filter: brightness(1.03);
+}
+
+/* Active / pressed */
+.navbar .navbar-nav .nav-link.active,
+.navbar .navbar-nav .nav-link[aria-current="page"] {
+  border-top: 2px solid var(--win-dark) !important;
+  border-left: 2px solid var(--win-dark) !important;
+  border-right: 2px solid var(--win-light) !important;
+  border-bottom: 2px solid var(--win-light) !important;
+  box-shadow: none !important;
+}
+
+/* ---------------------------
+   Start Button (Home link)
+   --------------------------- */
+
+/* First left nav item */
+.navbar .navbar-nav:first-child
+.nav-item:first-child .nav-link {
+  font-weight: 800 !important;
+  margin-right: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Hide original text */
+.navbar .navbar-nav:first-child
+.nav-item:first-child .nav-link {
+  text-indent: -9999px;
+}
+
+/* Start icon */
+.navbar .navbar-nav:first-child
+.nav-item:first-child .nav-link::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(
+    135deg,
+    #00a000 0 50%,
+    #0000a0 50% 100%
+  );
+  border: 1px solid #000;
+  box-shadow: 1px 1px 0 #000;
+  display: inline-block;
+  text-indent: 0;
+}
+
+/* Start label */
+.navbar .navbar-nav:first-child
+.nav-item:first-child .nav-link::after {
+  content: " Start";
+  font-weight: 800;
+  margin-left: 2px;
+  text-indent: 0;
+}
+
+/* Pressed Start */
+.navbar .navbar-nav:first-child
+.nav-item:first-child .nav-link:active {
+  border-top: 2px solid var(--win-dark) !important;
+  border-left: 2px solid var(--win-dark) !important;
+  border-right: 2px solid var(--win-light) !important;
+  border-bottom: 2px solid var(--win-light) !important;
+  box-shadow: none !important;
+  transform: translate(1px, 1px);
 }
