@@ -69,6 +69,12 @@ Firebase Hosting is production-grade hosting for web content. In practice, it’
 Key capabilities: - HTTPS by default - CDN caching for fast delivery - Simple deploy + rollback workflow
 :::
 
+::: {.callout-note collapse="false"}
+## cdn.jpeg — Content Delivery Network
+
+![Conceptual diagram of a CDN.](images/CDN.png){fig-align="center"}
+:::
+
 **Today’s lab**: we will deploy the **Vite build output** (`dist/`) to Firebase Hosting.
 
 ### 2) Authentication (app sign-in)
@@ -174,7 +180,6 @@ dist/
 This is why we set the Firebase Hosting “public directory” to `dist`.
 :::
 
-
 ## Transition to Lab 1
 
 ::: {.callout-important collapse="false"}
@@ -182,7 +187,7 @@ This is why we set the Firebase Hosting “public directory” to `dist`.
 
 In [lab 1](../lab1/index.qmd), you will:
 
-1. Clone a git repo containing a simple [Vite app](https://github.com/Cloud-Course-Spring-2026/simple_firebase_app)
+1.  Clone a git repo containing a simple [Vite app](https://github.com/Cloud-Course-Spring-2026/simple_firebase_app)
 2.  Build the app (`npm run build`)
 3.  Initialize Firebase Hosting (`firebase init hosting`)
     -   public directory = `dist`
