@@ -7,266 +7,365 @@ title: "Lecture 3 — Web & Network Fundamentals for the Cloud"
 
 Today we’ll focus on the **web and networking fundamentals** that help explain what actually happens when you deploy an app to the cloud.
 
-1. How web requests work (client → server)
-2. DNS and naming
-3. HTTP vs HTTPS
-4. Public vs private exposure
-5. Load balancers and “invisible infrastructure”
-6. What really happened when you deployed to Firebase
+1.  **The Request Model**: Client → Server
+2.  **The Internet Postal Service**: A unified model for:
+    -   **HTTP** (The Message)
+    -   **DNS** (The Address)
+    -   **TCP/IP** (The Logistics)
+    -   **HTTPS** (The Lockbox)
+3.  **Statelessness**: Why the web forgets you
+4.  **Static vs. SPAs**: Where does the code run?
+5.  **Load Balancers**: The "Invisible Infrastructure"
+6.  **Reference**: Common Codes & Methods
 :::
 
 ## Why this lecture exists
+In Lab 1, you deployed a real web app and got a public URL. This lecture answers the question:
 
 ::: {.callout-important collapse="false"}
-## context.exe — Connecting the dots
-
-In Lab 1, you deployed a real web app and got a public URL.
-
-This lecture answers the question:
-
 **What actually happens between a browser and a cloud-hosted application?**
-
-Understanding this makes later topics—security, CI/CD, databases, and cloud architecture—much easier to reason about.
 :::
 
----
+------------------------------------------------------------------------
 
-## Clients, servers, and requests
+## 1. The Request Model
+
+At a high level, the web works on a **Request–Response** cycle.
+
+-   **Client:** Initiates the conversation ("I want this file").
+-   **Server:** Processes the order and sends back a response ("Here is your file").
 
 ::: {.callout-note collapse="false"}
-## request.exe — The core web model
+## diagram.png — The Cycle
 
-At a high level, the web works like this:
-
-- A **client** (usually a browser) sends a request
-- A **server** receives the request
-- The server sends back a response
-
-This request–response pattern is the foundation of almost everything on the web.
+![The client and server.](images/simple-client-server.png){fig-align="center"}
 :::
 
-### Statelessness (important for cloud)
+------------------------------------------------------------------------
 
-::: {.callout-tip collapse="false"}
-## stateless.dll — Why this matters
+## 2. The Internet Postal Service
 
-Most web requests are **stateless**:
+To understand how the cloud works, we'll use the analogy of sending a letter. In this analogy:
 
-- The server does not remember previous requests by default
-- Each request must contain all the information needed to handle it
+1\. **HTTP** is the letter inside the envelope (the content).
 
-This property makes it much easier to:
-- scale systems
-- load-balance traffic
-- replace failed servers
+2\. **DNS** is the phonebook we use to find the destination address.
 
-Cloud platforms are built around this idea.
-:::
+3\. **TCP/IP** is the postal system (trucks, sorting centers) that moves the letter.
 
----
+4\. **HTTPS** is the security envelope that prevents the mailman from reading your letter.
 
-## URLs and DNS: names before machines
+### Part A: HTTP (The Letter)
 
 ::: {.callout-note collapse="false"}
-## dns.exe — How names become destinations
+## protocol.ini — The Language
 
-When you visit a URL like:
+**HTTP (HyperText Transfer Protocol)** is the rulebook for what we write *inside* the letter.
 
-```
-https://my-app.web.app
-```
+When your browser wants a webpage, it essentially writes a note to the server:
 
-your computer does **not** know where that is yet.
+> **To:** Google Server **Message:** GET /index.html **From:** Chrome Browser
 
-It first asks the **Domain Name System (DNS)**:
-> “What IP address corresponds to this name?”
+The server reads this note, finds the file, and writes a return letter:
+
+> **Status:** 200 OK (I found it!) **Content:** `<html>...</html>`
+
+-   If we didn't have HTTP, the server wouldn't know how to read your request.
+-   That is, this is a language that allows communication between client and server.
 :::
 
-### Why DNS exists
-
-::: {.callout-tip collapse="false"}
-## phonebook.txt — The internet’s directory
-
-DNS exists because:
-- IP addresses are hard to remember
-- Servers move and change
-- Cloud services scale dynamically
-
-Names stay stable even when the underlying infrastructure changes.
-:::
-
-### Further reading (recommended)
-
-::: {.callout-note collapse="true"}
-## reading.exe — DNS
-
-- Cloudflare Learning Center:  
-  **What is DNS?**  
-  https://www.cloudflare.com/learning/dns/what-is-dns/
-
-- Mozilla MDN:  
-  **How the Web Works — Domain names**  
-  https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/How_the_Web_works
-:::
-
----
-
-## HTTP vs HTTPS
+### Part B: DNS (The Address Book)
 
 ::: {.callout-note collapse="false"}
-## http.exe — Talking to servers
+## dns_lookup.exe — Names vs. Numbers
 
-**HTTP** defines how clients and servers communicate:
-- request methods (GET, POST, etc.)
-- headers
-- responses and status codes
+You wrote your letter to "Google.com". But the postal system (the Internet) doesn't know where "Google.com" is. It only understands numeric coordinates (IP Addresses), like `142.250.190.46`.
+
+Before sending the letter, your computer consults the **DNS (Domain Name System)**.
+
+1.  **You:** "I have a letter for `google.com`. What is their number?"
+2.  **DNS Server:** "One moment... `google.com` is located at `142.250.190.46`."
+3.  **You:** *Writes `142.250.190.46` on the envelope.*
+
+-   **Cloud Context:** When you deploy to Firebase, you get a name (`web.app`). Behind the scenes, Google updates the DNS "phonebook" to point that name to their load balancers.
+-   For more detail see this [article](https://www.cloudflare.com/learning/dns/what-is-dns/) on CloudFlare
 :::
 
-### What HTTPS adds
+### Part C: TCP/IP (The Logistics)
 
-::: {.callout-important collapse="false"}
-## https.exe — Security by default in the cloud
+Now that the letter is written (HTTP) and addressed (DNS), it needs to be shipped. This is **TCP/IP**.
 
-**HTTPS** adds two critical guarantees:
+**IP (Internet Protocol) = The Address Label**
 
-1. **Encryption** — others cannot read the traffic
-2. **Identity** — you know who you are talking to
+-   IP is responsible for routing.
+-   It looks at the destination (`142.250.190.46`) and figures out which road (router) the truck should take to get closer to the destination.
 
-Modern cloud platforms typically provide HTTPS automatically.
-:::
+**TCP (Transmission Control Protocol) = The Certified Mail Service**
 
-### Why this matters for cloud
-
-::: {.callout-tip collapse="false"}
-## tls.dll — Managed security
-
-When you used Firebase Hosting:
-- HTTPS was enabled by default
-- Certificates were managed for you
-- You didn’t configure encryption manually
-
-This is an example of cloud providers **abstracting away complexity**.
-:::
-
-### Further reading
-
-::: {.callout-note collapse="true"}
-## reading.exe — HTTPS
-
-- Cloudflare Learning Center:  
-  **What is HTTPS?**  
-  https://www.cloudflare.com/learning/ssl/what-is-https/
-
-- Cloudflare Learning Center:  
-  **What happens in a TLS handshake?**  
-  https://www.cloudflare.com/learning/ssl/what-happens-in-a-tls-handshake/
-:::
-
----
-
-## Public vs private: exposure as a design choice
-
-::: {.callout-note collapse="false"}
-## exposure.exe — Who can reach your service?
-
-In the cloud, one of the most important questions is:
-
-**Should this service be reachable from the public internet?**
-:::
-
-### Why exposure matters
+-   The internet is chaotic. Roads close; trucks get lost.
+-   TCP ensures reliability by chopping your letter into numbered pieces (packets): \* "Packet 1 of 3" \* "Packet 2 of 3" \* "Packet 3 of 3"
+-   If "Packet 2" falls off the truck, TCP notices it's missing and calls the sender: *"Hey, I got 1 and 3, but 2 is missing. Resend it!"*
 
 ::: {.callout-warning collapse="false"}
-## risk.dll — Default assumptions
+## udp.dll — The Alternative: Speed over Reliability
 
-- Public services will be scanned
-- Misconfigurations are common causes of breaches
-- Security often starts with *network exposure*, not authentication
+While **TCP** is like "Certified Mail" (careful, tracked, guaranteed), **UDP (User Datagram Protocol)** is the **"Fire and Forget"** mode.
 
-Cloud platforms force you to think explicitly about these boundaries.
+-   **Analogy:** Throwing newspapers from a moving truck.
+
+    -   The driver throws them out as fast as possible.
+    -   If one lands in a puddle or hits a bush? Too bad. The truck doesn't stop to fix it.
+
+    ![](images/tcp.png)
+
+**Why use an unreliable protocol?**
+
+-   **Real-time Video (Zoom/Netflix):** If a video packet gets lost, it's better to have a tiny "glitch" on screen than to **freeze** the video while waiting for a resend (buffering).
+-   **Gaming:** You need the *current* player position immediately. You don't care where they were 2 seconds ago.
 :::
 
----
-
-## Load balancers: the invisible middle
-
-::: {.callout-note collapse="false"}
-## lb.exe — You rarely talk to a single server
-
-In cloud systems:
-
-- A single URL often represents **many machines**
-- A **load balancer** sits in front of them
-- Traffic is distributed automatically
-:::
-
-### Why load balancers matter
-
-::: {.callout-tip collapse="false"}
-## scale.dll — Reliability and elasticity
-
-Load balancers enable:
-- scaling up and down
-- replacing failed servers
-- zero-downtime updates
-
-Most cloud platforms hide load balancers from you—but they’re still there.
-:::
-
----
-
-## What actually happened when you deployed
+### Part D: HTTPS (The Security)
 
 ::: {.callout-important collapse="false"}
-## lab1-review.exe — Putting it all together
+## security.exe — The Locked Briefcase
 
-When you deployed your app to Firebase:
+Standard HTTP is like a **Postcard**. Anyone who touches it—the mailman, the sorting facility, the truck driver—can read it.
 
-1. You built static files (`dist/`)
-2. Files were uploaded to Firebase Hosting
-3. Firebase placed them behind:
-   - a CDN
-   - load balancers
-   - HTTPS endpoints
-4. DNS pointed your URL to that infrastructure
+**HTTPS** wraps your letter in a **Locked Briefcase**.
 
-You didn’t configure these pieces—but you benefited from them.
+1.  **Encryption:** You lock the message. Only the destination server has the key.
+2.  **Identity:** The briefcase has a verified seal (SSL Certificate) proving it really goes to Google, not an imposter.
+
+This is the standard for the cloud.
 :::
 
----
+------------------------------------------------------------------------
 
-## Key takeaways
+## 3. Deep Dive: Statelessness
+
+When we say HTTP is **stateless**, we mean the server treats every single request as a completely new interaction.
+
+**The Scenario:** 1. You log in (`POST /login`). The server checks your password and says "Success." 2. One second later, you ask for your profile (`GET /profile`).
+
+**The Problem:** In a stateless world, the server does **not** remember that *you* were the one who just logged in. It has already forgotten you. It asks, "Who are you?"
+
+**The Solution:** You must provide proof of identity (a Token/Cookie) with **every single request**, forever.
+
+::: {.callout-tip collapse="false"}
+## cookies.jpeg
+
+![](images/cookies-2.jpg){fig-align="center" width="451"}
+:::
+
+::: {.callout-tip collapse="false"}
+## analogy.log — The Call Center
+
+To understand **why** we do this, imagine a Customer Support Call Center.
+
+**Option A: Stateful**
+
+-   You call and get Agent Steve.
+-   Steve writes your details on a sticky note on his desk.
+-   **The Constraint:** If you hang up and call back, you **must** get Steve again. No one else has your sticky note.
+-   **The Risk:** If Steve goes to lunch (or his phone breaks), your session is gone. You have to start over.
+
+**Option B: Stateless**
+
+-   You call and get Agent Steve.
+-   Steve types your details into a central database (not a sticky note).
+-   **The Benefit:** If you hang up and call back, you can talk to Agent Sarah, Agent Mike, or Agent Linda.
+-   They just look up your ID in the central database and pick up exactly where Steve left off.
+
+**Cloud Translation:**
+
+-   **Agents** = Web Servers (running your code).
+-   **Sticky Note** = Server Memory (RAM).
+-   **Central Database** = Cloud Database (Firestore, SQL, Redis).
+:::
+
+::: {.callout-important collapse="false"}
+## callcenter.png — The Call Center Analogy
+
+![](images/call.jpeg){fig-align="center"}
+:::
+
+::: {.callout-important collapse="false"}
+## scaling.exe — Servers are Ephemeral
+
+Stateless requests and server architecture allows us to treat servers as ephemeral. This has some major advantages:
+
+-   Servers can easily be swapped out.
+-   It doesn't matter which server answers your request
+-   You can delete serve A, replace it with server B, or add 100 new servers quickly without the user noticing.
+-   This leads to massive horizontal scalability.
+
+Because "Server-045" held no unique data (statelessness), its death caused **zero data loss** for the users. This is one way the cloud achieves 99.99% reliability.
+:::
+
+::: {.callout-warning collapse="false"}
+## persistence.cfg — So where does the data go?
+
+If the server doesn't hold the data, where does it live?
+
+1.  **The Client (Browser):** Holds the "Session ID" or "Auth Token" (the wristband that proves who you are).
+2.  **The Database:** Holds the actual heavy data (profiles, cart items, chat logs).
+
+**Takaways:**
+
+-   **Compute is temporary:** It can disappear at any time.
+-   **State (Data) is external:** It lives in a dedicated database layer, safe from server crashes.
+:::
+
+------------------------------------------------------------------------
+
+## 4. Load Balancers
+
+A Load Balancer is essentially a **Reverse Proxy**.
+
+-   **Forward Proxy:** You use it to hide your identity *from* the internet (like a VPN).
+-   **Reverse Proxy:** The internet talks to it, and it hides the identity of your servers *from* the internet.
+-   When a user visits `google.com`, they are hitting a Load Balancer.
+-   That machine doesn't have the data. It acts as a middleman, turning around and asking one of thousands of backend servers for the answer, then passing it back to you.
+
+::: {.callout-tip collapse="false"}
+## algorithm.cfg — How does it choose?
+
+How does the Load Balancer decide which server gets your request? It follows a set of rules (Algorithms):
+
+1.  **Round Robin (The "Take Turns" Method):**
+    -   Request 1 → Server A
+    -   Request 2 → Server B
+    -   Request 3 → Server C
+    -   Request 4 → Server A (Loop back to start)
+    -   *Pros:* Simple. *Cons:* Doesn't care if Server A is struggling with a huge task while Server B is idle.
+2.  **Least Connections (The "Shortest Line" Method):**
+    -   The Load Balancer looks at who is busy.
+    -   "Server A has 50 active users. Server B has 2."
+    -   **Action:** Send next user to Server B.
+    -   *Pros:* Smarter distribution. Prevents one server from getting swamped.
+:::
+
+::: {.callout-important collapse="false"}
+## balance.webp — Achieving Balance
+
+![](images/balance-2.webp){fig-align="center"}
+
+![Demonstration of load balancing from: <https://www.cloudflare.com/learning/performance/what-is-load-balancing/>](images/balance1.webp){fig-align="center"}
+:::
+
+::: {.callout-important collapse="false"}
+## health_check.log — The Heartbeat
+
+This is the most critical feature for reliability. Every few seconds, the Load Balancer pings every server with a tiny question: *"Are you alive?"* (usually `GET /health`).
+
+-   **Server A:** "200 OK" (I'm good).
+-   **Server B:** "200 OK" (I'm good).
+-   **Server C:** *...Silence...* (or 500 Error).
+
+**The Action:** The Load Balancer immediately **removes Server C from the rotation.**
+
+-   Users are never sent to Server C, so they never see an error page.
+-   When Server C reboots and replies "200 OK" again, it gets re-added to the rotation automatically.
+:::
+
+::: {.callout-warning collapse="false"}
+## ssl_offload.dll — specialized tasks
+
+In practice, Load Balancers also do **SSL Termination**.
+
+- Decrypting HTTPS traffic ("unlocking the briefcase") takes a lot of CPU power. 
+- Instead of making your web servers do this math, the **Load Balancer** unlocks the briefcase, inspects the request, and passes the *unencrypted* request to your web servers over a private, fast network.
+- This lets your web servers focus 100% on running your application code, not solving cryptography math.
+:::
+
+------------------------------------------------------------------------
+
+## 5. Appendix: HTTP Cheat Sheet
 
 ::: {.callout-note collapse="false"}
-## takeaway.exe — Mental models to keep
+## methods.txt — The Verbs
 
-- The web is request–response
-- Names (DNS) matter more than machines
-- HTTPS is the default, not a luxury
-- Public vs private exposure is a design choice
-- Cloud platforms hide infrastructure—but it still exists
+These are the instructions you write on the "Letter" (HTTP Request) so the server knows what you want to do.
+
+| Verb       | Usage                 | Analogy                                  |
+|:-----------------------|:-----------------------|:-----------------------|
+| **GET**    | Retrieve data.        | "Please send me a copy of the menu."     |
+| **POST**   | Submit new data.      | "Here is my completed application form." |
+| **PUT**    | Update existing data. | "Here is a correction to my address."    |
+| **DELETE** | Remove data.          | "Please shred my file."                  |
 :::
 
----
+::: {.callout-warning collapse="false"}
+## status_codes.log — The Responses
 
-## Looking ahead
+The 3-digit number the server writes on the return envelope.
+
+| Code | Series | Meaning | Postal Analogy |
+| :--- | :--- | :--- | :--- |
+| **200** | **OK** | Request Succeeded. | "Here is the package you ordered." |
+| **201** | **Created** | Resource Created. | "I have successfully filed your new application." |
+| **301** | **Moved** | Permanent Redirect. | "We moved to a new building. Go to this address." |
+| **400** | **Bad Req** | Client Error. | "Your handwriting is messy; I can't read this." |
+| **401** | **Unauth** | No Identity. | "Who are you? (You forgot your wristband/token)." |
+| **403** | **Forbidden** | No Permission. | "I know who you are, but you aren't allowed in here." |
+| **404** | **Not Found** | Missing Resource. | "That file doesn't exist." (Return to sender). |
+| **500** | **Error** | Server Crash. | "The kitchen is on fire. Try again later." |
+| **503** | **Unavailable** | Server Busy/Down. | "We are closed for renovations (maintenance)." |
+:::
+
+## 6. Recap
+
+
+1.  **HTTP** is the message content.
+2.  **DNS** finds the destination coordinates.
+3.  **TCP/IP** reliably ships the packets across the world.
+4.  **HTTPS** locks the data so intermediaries can't read it.
+5.  **Status Codes** are how the server tells you if the letter was delivered or if the kitchen is on fire.
+
+## 7. Sources & Further Reading
+
+::: {.callout-tip collapse="false"}
+## Useful Resoruces
+
+These are the industry-standard resources used by actual cloud engineers.
+
+* **MDN Web Docs: HTTP Overview**
+    [https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview](https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview)
+    *The official handbook for how the web speaks. Read the "Components of HTTP-based systems" section.*
+
+* **Cloudflare: How DNS Works**
+    [https://www.cloudflare.com/learning/dns/what-is-dns/](https://www.cloudflare.com/learning/dns/what-is-dns/)
+    *A step-by-step visual guide to the "Internet Phonebook," including the recursive lookup process.*
+
+* **The Twelve-Factor App: Processes (Statelessness)**
+    [https://12factor.net/processes](https://12factor.net/processes)
+    *The "Bible" of modern cloud architecture. This specific chapter explains why "sticky sessions" are bad and why servers must be stateless.*
+:::
 
 ::: {.callout-note collapse="false"}
-## next.exe — Why this matters later
+## deep_dive.zip — Advanced Topics
 
-These ideas will come back when we discuss:
-- security and misconfigurations
-- CI/CD and automated deployments
-- infrastructure as code
-- databases and backend services
+For those who want to understand the "invisible" layers:
 
-Understanding the network makes the cloud make sense.
+* **Cloudflare: What is Load Balancing?**
+    [https://www.cloudflare.com/learning/performance/what-is-load-balancing/](https://www.cloudflare.com/learning/performance/what-is-load-balancing/)
+    *Explains algorithms like "Round Robin" vs "Least Connection" and how health checks work.*
+
+* **GeeksForGeeks: TCP/IP Model**
+    [https://www.geeksforgeeks.org/computer-networks/tcp-ip-model/](https://www.geeksforgeeks.org/computer-networks/tcp-ip-model/)
+    *A technical breakdown of the 4 layers (Link, Internet, Transport, Application).*
+
+* **MDN: HTTP Status Codes**
+    [https://developer.mozilla.org/en-US/docs/Web/HTTP/Status](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
+    *The complete list of every possible return code (200, 404, 500, 418, etc.).*
 :::
 
-::: {.callout-note collapse="true"}
-## discussion.exe — Questions to think about
+::: {.callout-important collapse="false"}
+## tools.exe — Try it yourself
 
-1. Which parts of this workflow did Firebase hide from you?
-2. What risks are reduced by managed HTTPS and load balancers?
-3. Where might you want *more* control instead of abstraction?
+Want to see this in action? Open your terminal:
+
+* **Check DNS:** `dig google.com` (Mac/Linux) or `nslookup google.com` (Windows)
+* **Trace the Route:** `traceroute google.com` (Mac/Linux) or `tracert google.com` (Windows)
+* **See HTTP Headers:** Open Chrome DevTools (F12) $\rightarrow$ **Network** tab $\rightarrow$ Refresh page $\rightarrow$ Click any file.
 :::
