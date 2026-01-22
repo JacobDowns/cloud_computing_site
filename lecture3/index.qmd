@@ -14,9 +14,8 @@ Today we’ll focus on the **web and networking fundamentals** that help explain
     -   **TCP/IP** (The Logistics)
     -   **HTTPS** (The Lockbox)
 3.  **Statelessness**: Why the web forgets you
-4.  **Static vs. SPAs**: Where does the code run?
-5.  **Load Balancers**: The "Invisible Infrastructure"
-6.  **Reference**: Common Codes & Methods
+4.  **Load Balancers**: The "Invisible Infrastructure"
+5.  **Reference**: Common Codes & Methods
 :::
 
 ## Why this lecture exists
@@ -222,7 +221,7 @@ traceroute google.com
 * **Middle Rows:** Major internet backbones (undersea cables, fiber lines).
 * **Final Row:** The Google Data Center that answered you.
 
-*Tip: If you see `* * *`, that just means a router is configured to be "secret" and ignore trace requests.*
+*Tip: If you see `* * *`, that just means a router is configured to be "secret" and ignore trace requests. This is what happened to me when I tried it. Very sad.*
 :::
 
 ------------------------------------------------------------------------
