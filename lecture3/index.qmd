@@ -91,7 +91,30 @@ Before sending the letter, your computer consults the **DNS (Domain Name System)
 -   For more detail see this [article](https://www.cloudflare.com/learning/dns/what-is-dns/) on CloudFlare
 :::
 
-### Part C: TCP/IP (The Logistics)
+### Part C: Ports (The Suite Number)
+
+- Your server is a large building that runs many different programs at once (a Web Server, a Database, an Email Server).
+- If a packet arrives at `142.250.190.46`, how does the OS know which program should receive it?
+
+It uses a **Port Number**.
+
+* **IP Address:** Gets you to the correct computer (The Building).
+* **Port Number:** Gets you to the correct **application** running on that computer (The Suite #).
+
+
+::: {.callout-tip collapse="false"}
+## well_known_ports.txt — The Standard Doors
+
+| Port | Service | Description |
+| :--- | :--- | :--- |
+| **80** | **HTTP** | Unencrypted Web Traffic (Default for `http://`). |
+| **443** | **HTTPS** | Secure Web Traffic (Default for `https://`). |
+| **22** | **SSH** | Secure Shell (Remote Control). |
+| **53** | **DNS** | The phonebook service itself. |
+| **5432** | **Postgres** | Default for PostgreSQL databases. |
+:::
+
+### Part D: TCP/IP (The Logistics)
 
 Now that the letter is written (HTTP) and addressed (DNS), it needs to be shipped. This is **TCP/IP**.
 
@@ -124,10 +147,8 @@ While **TCP** is like "Certified Mail" (careful, tracked, guaranteed), **UDP (Us
 -   **Gaming:** You need the *current* player position immediately. You don't care where they were 2 seconds ago.
 :::
 
-### Part D: HTTPS (The Security)
+### Part E: HTTPS (The Security)
 
-::: {.callout-important collapse="false"}
-## security.exe — The Locked Briefcase
 
 Standard HTTP is like a **Postcard**. Anyone who touches it—the mailman, the sorting facility, the truck driver—can read it.
 
@@ -137,6 +158,71 @@ Standard HTTP is like a **Postcard**. Anyone who touches it—the mailman, the s
 2.  **Identity:** The briefcase has a verified seal (SSL Certificate) proving it really goes to Google, not an imposter.
 
 This is the standard for the cloud.
+
+
+## Simple Demo
+
+::: {.callout-tip collapse="false"}
+## telnet.exe 
+
+We can show that HTTP is just plain text by sending a request *without* a browser.
+
+**Step 1: Open your Terminal**
+* **Windows:** Press `Win + R`, type `cmd`, hit Enter.
+* **Mac/Linux:** Open your "Terminal" app.
+
+**Step 2: Open a Connection (The TCP Handshake)**
+Run this command to connect to Google on Port 80. This creates the "pipe" between your computer and theirs.
+*(Note: If `telnet` isn't installed, use `nc` or `ncat`)*
+
+```bash
+telnet google.com 80
+# OR
+nc google.com 80
+```
+
+**Step 3: Write the Letter (The HTTP Request)**
+Once the screen goes blank or says "Connected", type the following exactly.
+*Note: The server is very picky about typos!*
+
+```http
+GET / HTTP/1.1
+Host: www.google.com
+
+```
+*(You MUST hit **Enter twice** at the end to send the request)*
+
+**Step 4: Analyze the Result**
+You will see a flood of text. This is the **Response**.
+
+* Look for `HTTP/1.1 200 OK` (The Status Code).
+* Look for `Set-Cookie` (The Server trying to give you a wristband).
+* Look for `<!doctype html>` (The actual HTML content).
+:::
+
+::: {.callout-note collapse="false"}
+## traceroute.bat — Visualize the Path
+
+Want to see the actual "Roads" and "Intersections" your data travels through?
+
+**Run this command:**
+
+```bash
+# Windows Users
+tracert google.com
+
+# Mac / Linux Users
+traceroute google.com
+```
+
+**What you are seeing:**
+
+* **Row 1:** Your local router (WiFi gateway).
+* **Rows 2-4:** Your ISP (Comcast, Verizon, University Network).
+* **Middle Rows:** Major internet backbones (undersea cables, fiber lines).
+* **Final Row:** The Google Data Center that answered you.
+
+*Tip: If you see `* * *`, that just means a router is configured to be "secret" and ignore trace requests.*
 :::
 
 ------------------------------------------------------------------------
