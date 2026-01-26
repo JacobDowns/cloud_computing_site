@@ -193,6 +193,8 @@ This file creates a single Firebase app instance from the config and exports rea
 
 ```ts
 // src/firebase.ts
+
+// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -201,7 +203,7 @@ const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 export const app = initializeApp(firebaseConfig);
@@ -219,18 +221,42 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
 } from "firebase/auth";
 
 import type { User } from "firebase/auth";
+
 import { auth } from "./firebase";
 
+/**
+ * Use one shared Google provider instance.
+ * You can add scopes later if needed (not required for basic sign-in).
+ */
 const provider = new GoogleAuthProvider();
 
-/** Sign in with Google (popup) */
+/**
+ * Preferred flow for most desktop browsers.
+ * Must be called from a user interaction (e.g., button click).
+ */
 export async function signInWithGooglePopup(): Promise<User> {
   const cred = await signInWithPopup(auth, provider);
   return cred.user;
+}
+
+/**
+ * Alternative flow for popup-blocked environments.
+ * Call signInWithGoogleRedirect() on click, then on page load call
+ * handleGoogleRedirectResult() once to finalize.
+ */
+export async function signInWithGoogleRedirect(): Promise<void> {
+  await signInWithRedirect(auth, provider);
+}
+
+export async function handleGoogleRedirectResult(): Promise<User | null> {
+  const result = await getRedirectResult(auth);
+  return result?.user ?? null;
 }
 
 /** Sign out current user */
@@ -238,10 +264,16 @@ export async function signOutUser(): Promise<void> {
   await signOut(auth);
 }
 
-/** Subscribe to auth state changes; returns unsubscribe function */
-export function subscribeToAuthChanges(cb: (user: User | null) => void): () => void {
+/**
+ * Subscribe to auth state changes.
+ * Returns an unsubscribe function you should call on cleanup.
+ */
+export function subscribeToAuthChanges(
+  cb: (user: User | null) => void
+): () => void {
   return onAuthStateChanged(auth, cb);
 }
+
 ```
 
 ## Step 8 — `src/notes.ts`
@@ -265,11 +297,17 @@ import {
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
 
+/**
+ * Minimal Note shape returned to the UI
+ */
 export type Note = {
   id: string;
   text: string;
 };
 
+/**
+ * Add a new note for the given user
+ */
 export async function addNote(user: User, text: string): Promise<void> {
   await addDoc(collection(db, "notes"), {
     uid: user.uid,
@@ -278,6 +316,13 @@ export async function addNote(user: User, text: string): Promise<void> {
   });
 }
 
+/**
+ * Subscribe to the current user's notes in realtime.
+ * Returns an unsubscribe function.
+ *
+ * The error callback is optional and will be called if the listener errors
+ * (for example, permission-denied or missing-index).
+ */
 export function subscribeToNotes(
   user: User,
   cb: (notes: Note[]) => void,
@@ -305,11 +350,18 @@ export function subscribeToNotes(
   );
 }
 
-/** Demo helper (insecure): subscribe to ALL notes */
+/**
+ * Demo helper: Subscribe to ALL notes in the collection (no where clause).
+ * This intentionally requests every document so you can demonstrate why rules are necessary.
+ * Returns an unsubscribe function.
+ *
+ * The error callback is optional and will be called on permission/index errors.
+ */
 export function subscribeToAllNotes(
   cb: (notes: Note[]) => void,
   onError?: (err: Error) => void
 ): () => void {
+  // No where() clause — requests entire collection
   const q = query(collection(db, "notes"), orderBy("createdAt", "desc"));
 
   return onSnapshot(
@@ -328,6 +380,9 @@ export function subscribeToAllNotes(
   );
 }
 
+/**
+ * Delete a note by ID
+ */
 export async function deleteNote(noteId: string): Promise<void> {
   await deleteDoc(doc(db, "notes", noteId));
 }
@@ -336,21 +391,25 @@ export async function deleteNote(noteId: string): Promise<void> {
 ## Step 9 — `src/App.tsx`
 
 The single React component that wires the app together: subscribes to auth state, switches between the “logged out” and “notes” views, calls notes.ts helpers, and surfaces status/error messages.
-
 ```ts
 // src/App.tsx
 import React, { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 
-import { signInWithGooglePopup, signOutUser, subscribeToAuthChanges } from "./auth";
-import { addNote, deleteNote, subscribeToAllNotes, subscribeToNotes } from "./notes";
+import {
+  signInWithGooglePopup,
+  signOutUser,
+  subscribeToAuthChanges,
+} from "./auth";
+
+import { addNote, subscribeToNotes, subscribeToAllNotes, deleteNote } from "./notes";
 
 type Note = {
   id: string;
   text: string;
 };
 
-export default function App(): JSX.Element {
+export default function App(): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -358,48 +417,77 @@ export default function App(): JSX.Element {
   const [notes, setNotes] = useState<Note[]>([]);
   const [newText, setNewText] = useState<string>("");
 
-  // Demo toggle (insecure until rules are added)
+  // Demo toggle: show only my notes vs show all notes
+  // You can hide this behind a debug flag if desired.
   const [showAll, setShowAll] = useState(false);
 
+  // Subscribe to auth state
   useEffect(() => {
     const unsub = subscribeToAuthChanges((u) => {
       setUser(u);
-      if (!u) setNotes([]);
+      if (!u) {
+        setNotes([]);
+      }
     });
     return () => unsub();
   }, []);
 
+  // Subscribe to notes (either per-user or all)
   useEffect(() => {
     setErrorMsg(null);
-
     if (!user && !showAll) {
+      // nothing to subscribe to when no user and not showing all
       setNotes([]);
       return;
     }
 
     setStatus("Loading notes...");
+    let unsub: () => void;
 
-    const onErr = (err: Error) => {
-      console.error(err);
+    const handleError = (err: Error) => {
+      console.error("notes listener error:", err);
+      // Show a friendly message (detect common Firestore codes if desired)
+      setErrorMsg(err?.message ?? "Unknown error from Firestore listener.");
       setStatus(null);
-      setErrorMsg(err?.message ?? "Firestore listener error");
     };
 
-    const unsub = showAll
-      ? subscribeToAllNotes((f) => { setNotes(f); setStatus(null); }, onErr)
-      : subscribeToNotes(user as User, (f) => { setNotes(f); setStatus(null); }, onErr);
+    if (showAll) {
+      unsub = subscribeToAllNotes(
+        (fetched) => {
+          setNotes(fetched);
+          setStatus(null);
+        },
+        handleError
+      );
+    } else {
+      // user must be non-null here
+      unsub = subscribeToNotes(
+        user as User,
+        (fetched) => {
+          setNotes(fetched);
+          setStatus(null);
+        },
+        handleError
+      );
+    }
 
-    return () => unsub();
+    return () => {
+      try {
+        unsub();
+      } catch (e) {
+        // ignore
+      }
+    };
   }, [user, showAll]);
 
+  // Auth handlers
   async function handleSignIn() {
     setStatus("Signing in...");
     try {
       await signInWithGooglePopup();
       setStatus(null);
     } catch (err: any) {
-      setStatus(null);
-      setErrorMsg(err?.message ?? "Sign-in failed");
+      setStatus(err?.message ?? "Sign-in failed");
     }
   }
 
@@ -409,22 +497,20 @@ export default function App(): JSX.Element {
       await signOutUser();
       setStatus(null);
     } catch (err: any) {
-      setStatus(null);
-      setErrorMsg(err?.message ?? "Sign-out failed");
+      setStatus(err?.message ?? "Sign-out failed");
     }
   }
 
+  // Notes handlers
   async function handleAddNote() {
     if (!user) {
-      setErrorMsg("You must be signed in to add a note.");
+      setStatus("You must be signed in to add a note.");
       return;
     }
     const text = newText.trim();
     if (!text) return;
-
-    setStatus("Saving...");
+    setStatus("Saving note...");
     setErrorMsg(null);
-
     try {
       await addNote(user, text);
       setNewText("");
@@ -435,8 +521,8 @@ export default function App(): JSX.Element {
     }
   }
 
-  async function handleDelete(id: string) {
-    setStatus("Deleting...");
+  async function handleDeleteNote(id: string) {
+    setStatus("Deleting note...");
     setErrorMsg(null);
     try {
       await deleteNote(id);
@@ -453,18 +539,26 @@ export default function App(): JSX.Element {
         <h1>Cloud Notes</h1>
         <p>Sign in with Google to create and view your notes.</p>
         <button onClick={handleSignIn}>Sign in with Google</button>
+
         {status && <div style={{ marginTop: 12 }}><em>{status}</em></div>}
         {errorMsg && <div style={{ marginTop: 12, color: "crimson" }}>{errorMsg}</div>}
+
+        <hr style={{ margin: "20px 0" }} />
+        <p style={{ fontSize: 13, color: "#555" }}>
+          <b>Note:</b> If popups are blocked, allow popups or use the redirect flow.
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 20, maxWidth: 900 }}>
-      <header style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <div style={{ padding: 20, maxWidth: 800 }}>
+      <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <h1 style={{ margin: 0 }}>Cloud Notes</h1>
         <div style={{ marginLeft: "auto", textAlign: "right" }}>
-          <div><strong>{user.displayName ?? user.email ?? "Signed in"}</strong></div>
+          <div>
+            <strong>{user.displayName ?? user.email ?? "Signed in"}</strong>
+          </div>
           <div style={{ fontSize: 12, color: "#555" }}>{user.email}</div>
           <div style={{ marginTop: 8 }}>
             <button onClick={handleSignOut}>Sign out</button>
@@ -472,54 +566,76 @@ export default function App(): JSX.Element {
         </div>
       </header>
 
-      <section style={{ marginTop: 16 }}>
-        <h3>Notes</h3>
+      <section style={{ marginTop: 18 }}>
+        <h3>My notes</h3>
 
+        {/* Demo toggle: show all vs only my notes */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13 }}>
+          <label style={{ fontSize: 13, marginRight: 8 }}>
             <input
               type="checkbox"
               checked={showAll}
               onChange={(e) => setShowAll(e.target.checked)}
             />{" "}
-            Demo: subscribe to <strong>all</strong> notes (insecure until rules)
+            Demo: subscribe to <strong>all</strong> notes (insecure)
           </label>
+          <div style={{ fontSize: 12, color: "#666" }}>
+            Toggle this to demonstrate why Firestore rules are required.
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
-            style={{ flex: 1, padding: "8px 10px" }}
-            placeholder="Write a note..."
+            placeholder="Write a short note..."
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAddNote(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddNote();
+            }}
+            style={{ flex: 1, padding: "8px 10px" }}
           />
           <button onClick={handleAddNote}>Add</button>
         </div>
 
-        {status && <div style={{ marginBottom: 10 }}><em>{status}</em></div>}
-        {errorMsg && <div style={{ marginBottom: 10, color: "crimson" }}>{errorMsg}</div>}
+        {status && <div style={{ marginBottom: 12 }}><em>{status}</em></div>}
+        {errorMsg && <div style={{ marginBottom: 12, color: "crimson" }}>{errorMsg}</div>}
 
-        {notes.length === 0 ? (
-          <div style={{ color: "#666" }}>You have no notes yet.</div>
-        ) : (
-          <ul style={{ paddingLeft: 18 }}>
-            {notes.map((n) => (
-              <li key={n.id} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "center" }}>
-                <div style={{ flex: 1 }}>{n.text}</div>
-                <button onClick={() => handleDelete(n.id)}>Delete</button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div style={{ marginTop: 18, fontSize: 13, color: "#555" }}>
-          <strong>Debug:</strong> uid = {user.uid}
+        <div>
+          {notes.length === 0 ? (
+            <div style={{ color: "#666" }}>You have no notes yet.</div>
+          ) : (
+            <ul style={{ paddingLeft: 18 }}>
+              {notes.map((n) => (
+                <li
+                  key={n.id}
+                  style={{
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>{n.text}</div>
+                  <div>
+                    <button onClick={() => handleDeleteNote(n.id)} title="Delete note">Delete</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
+
+      <footer style={{ marginTop: 28, fontSize: 13, color: "#555" }}>
+        <div><strong>Debug:</strong> UID: {user.uid}</div>
+        <div style={{ marginTop: 6 }}>
+          Next step: secure your data with Firestore Security Rules so only you can read and write your notes.
+        </div>
+      </footer>
     </div>
   );
 }
+
 ```
 
 ---
