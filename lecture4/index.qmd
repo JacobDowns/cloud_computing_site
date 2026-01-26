@@ -1,0 +1,171 @@
+---
+title: "Identity, Authorization, and Firestore"
+---
+
+::: {.callout-note collapse="false"}
+## agenda.txt 
+
+**Goal:** understand what you'll build in [Lab 2](../lab2/index.qmd)
+
+1.  What you’ll build today (demo + lab)
+2.  Authentication vs Authorization
+3.  Firebase Auth at a glance (Google provider)
+4.  What Firestore is (and how it differs from SQL)
+5.  Where the code lives (React + Vite quick orientation)
+:::
+
+## What you will build
+
+::: {.callout-important collapse="false"}
+## cloud-notes.exe — The app for Lab 2
+
+You will build and deploy a small web app called **Cloud Notes**:
+
+-   Sign in with **Google**
+-   Create notes that are stored in **Firestore**
+-   See notes update in real time
+-   Demonstrate an “insecure query” that can read **all users’ notes**
+-   Fix it with **Firestore Security Rules** (authorization)
+:::
+
+## Authentication vs Authorization
+
+-   **Authentication (AuthN)**: *Who are you?*\
+    Example: “This user is Jacob (or has Google identity X).”
+
+-   **Authorization (AuthZ)**: *What are you allowed to do?*\
+    Example: “This user may only read/write notes that belong to them.”
+
+Key point: **You can be authenticated but not authorized.**
+
+::: {.callout-tip collapse="false"}
+## auth.png — Authentication and Authorization
+
+![Image from: https://www.okta.com/identity-101/authentication-vs-authorization/](images/auth-2.png){fig-align="center"}
+:::
+
+::: {.callout-warning collapse="false"}
+## important.txt — The rule of cloud apps
+
+If “security” only exists in your **frontend UI**, you do not have security.
+
+In cloud systems:\
+**Clients can ask. Servers decide.**
+:::
+
+## Firebase Authentication at a glance (Google provider)
+
+::: {.callout-note collapse="false"}
+## firebase-auth.exe — What Firebase handles for you
+
+When you enable the **Google provider** in Firebase Auth:
+
+-   users click **Sign in with Google**
+-   Google verifies the identity
+-   Firebase returns a signed-in user object (including a stable `uid`)
+-   the browser stores a session token so refreshes stay signed-in
+
+You do **not** need to run your own auth server for this lab.
+:::
+
+### What you will use in code
+
+::: {.callout-note collapse="false"}
+## sdk.txt — The 3 core “auth flows” in this lab
+
+In the app you will implement:
+
+1.  **Sign in** (Google popup)
+2.  **Sign out**
+3.  **Session / auth-state listener** (keep UI in sync across refresh)
+
+Firebase provides these primitives; your React UI calls them.
+:::
+
+## What is Firestore?
+
+::: {.callout-note collapse="false"}
+## firestore.exe — A cloud-native database
+
+**Cloud Firestore** is a managed, document-oriented **NoSQL database**.
+
+Data is stored as:
+
+-   **collections** (like folders)
+-   containing **documents** (JSON-like objects)
+
+Example “notes” collection:
+
+```         
+notes (collection)
+  <doc-id> (document)
+    uid: "someUserUid"
+    text: "hello"
+    createdAt: <timestamp>
+```
+
+Firestore is designed to be used **directly from frontend apps** — but that makes **rules** essential.
+:::
+
+## Firestore vs a traditional SQL database
+
+::: {.callout-important collapse="false"}
+## compare.exe — Different mental models
+
+Firestore and SQL solve overlapping problems, but they encourage different designs.
+:::
+
+| Topic | Traditional SQL (e.g., PostgreSQL) | Firestore |
+|------------------------|------------------------|------------------------|
+| Data shape | **Tables** with rows & columns | **Collections** of JSON-like documents |
+| Schema | Defined up front (columns, types) | Flexible; structure emerges from usage |
+| Joins | Common & powerful | No joins; often duplicate data |
+| Typical access | Browser → backend → DB | Browser → Firestore (client SDK) |
+| Security | Network + backend logic | **Security Rules** (policy at DB boundary) |
+| Scaling | Often vertical + tuning | Designed for horizontal scaling |
+| Real-time | Usually requires extra infra | Built-in real-time listeners |
+
+::: {.callout-tip collapse="false"}
+## takeaway.exe — Why we use Firestore here
+
+Firestore is a good teaching tool because it lets us:
+
+-   build a “real” app without a backend server
+-   focus on identity + data + policy
+-   show a concrete security failure mode
+:::
+
+## Where the code lives (React + Vite quick orientation)
+
+::: {.callout-note collapse="false"}
+## vite.exe — What Vite is doing
+
+Rembember that Vite is just your frontend UI tool.
+
+-   `npm run dev` starts a local dev server
+-   `npm run build` produces production files in `dist/`
+-   Remember that Firebase Hosting deploys **`dist/`**, not your source code
+:::
+
+::: {.callout-note collapse="false"}
+## folders.txt — The files you’ll touch
+
+You will mostly edit:
+
+-   `src/firebase.ts` — initialize Firebase and export `auth` + `db`
+-   `src/auth.ts` — helper functions for Google sign-in/out + auth listener
+-   `src/notes.ts` — Firestore helpers (add note, subscribe to notes)
+-   `src/App.tsx` — UI: login view + notes view + demo toggle
+-   `.env.local` — Firebase config values (not committed)
+
+**If you are new to React:** don’t worry — this lab is not about “React mastery.”\
+We’ll keep the UI minimal so you can focus on cloud concepts.
+:::
+
+::: {.callout-note collapse="true"}
+## discussion.exe — Quick check-in questions
+
+1.  What is the difference between “I’m logged in” and “I’m allowed to read this data”?
+2.  Why might direct browser-to-database access be both powerful *and* risky?
+3.  In your own words: what do Firebase Security Rules do?
+:::

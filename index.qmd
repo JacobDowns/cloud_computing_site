@@ -16,3 +16,4 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 2 — Firebase Deployment](lecture2/index.qmd)
 - [Lab 1 — Deploying a Simple App](lab1/index.qmd)
 - [Lecture 3 — Web Fundamentals](lecture3/index.qmd)
+- [Lecture 4 — Authentication + Firestore](lecture4/index.qmd)
