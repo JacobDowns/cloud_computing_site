@@ -91,12 +91,10 @@ You probably only have one project in Firebase, but if not, in your repo, check 
 ::: {.callout-important collapse="false"}
 ## auth.exe — Enable provider
 
-Firebase Console → **Build → Authentication → Sign-in method**
-
-Enable:
-- **Google**
-
-This allows “Sign in with Google” in your app.
+* In the Firebse Console, with your project opened, go to **Build → Authentication → Sign-in method**
+* In the section on additional providers, click on Google. 
+* Check enable and use your gmail address as the support email. 
+* This allows “Sign in with Google” in your app.
 :::
 
 ## Step 2 — Create a Firestore database
@@ -104,10 +102,11 @@ This allows “Sign in with Google” in your app.
 ::: {.callout-note collapse="false"}
 ## db.exe — Firestore setup
 
-Firebase Console → **Build → Firestore Database → Create database**
+In the Firebse Console, with your project opened, go to **Build → Firestore Database → Create database**
 
-- Start in **test mode** (temporary!)
+- Use standard edition. 
 - Pick any region
+- Click on start in **test mode** (temporary!)
 
 We will lock this down with rules later.
 :::
@@ -117,13 +116,13 @@ We will lock this down with rules later.
 ::: {.callout-note collapse="false"}
 ## webapp.exe — Firebase config
 
-Hosting-only apps don’t always need a web config, but Auth + Firestore do.
+Hosting-only apps don’t always need a web config, but Auth + Firestore require this.
 
-Firebase Console → Project settings → **General** → “Your apps” → **Web app**
-
-Register an app name (e.g., `cloud-notes-web`) and copy the config values.
-
-You will paste them into `.env.local` in Step 6.
+- Go to Project settings → **General** → “Your apps” → **Web**
+- **Note:** Project settings looks like a little gear. 
+- Register an app name (e.g., `cloud-notes-web`) and copy the config values.
+- You can leave the "Firebase Hosting" check box unchecked. 
+- Note that this returns some information you'll need for the SDK later. I'd recommend copyting this into a temporary file on your PC now because you'll need this information in Step 6. However, you can also retrieve this later. 
 :::
 
 ---
@@ -164,6 +163,8 @@ Then ensure `.env.local` is in `.gitignore`:
 .env.local
 ```
 
+This file defines the information needed by the SDK. Basically it tells the app which Firebase project to talk to. 
+
 **Restart** `npm run dev` after editing `.env.local`.
 :::
 
@@ -186,6 +187,10 @@ Now you will paste code into these files (create them if needed):
 
 ## Step 6 — `src/firebase.ts`
 
+
+
+This file creates a single Firebase app instance from the config and exports ready-to-use handles for services. Import these handles (auth, db, etc.) from other modules instead of initializing Firebase multiple times. It answers the question “which Firebase project am I connected to?”
+
 ```ts
 // src/firebase.ts
 import { initializeApp } from "firebase/app";
@@ -205,6 +210,8 @@ export const db = getFirestore(app);
 ```
 
 ## Step 7 — `src/auth.ts`
+
+Small wrapper functions around the Firebase Auth SDK. Exports functions to sign in (Google popup), sign out, and subscribe to auth state changes. Keeps authentication logic separate from UI so `App.tsx` can remain focused on rendering and state.
 
 ```ts
 // src/auth.ts
@@ -238,6 +245,8 @@ export function subscribeToAuthChanges(cb: (user: User | null) => void): () => v
 ```
 
 ## Step 8 — `src/notes.ts`
+
+Encapsulates Firestore operations: adding notes, deleting notes, and creating realtime subscriptions. Provides both the per-user query (subscribeToNotes) and the demo/all-notes subscription (`subscribeToAllNotes`).
 
 ```ts
 // src/notes.ts
@@ -326,7 +335,9 @@ export async function deleteNote(noteId: string): Promise<void> {
 
 ## Step 9 — `src/App.tsx`
 
-```tsx
+The single React component that wires the app together: subscribes to auth state, switches between the “logged out” and “notes” views, calls notes.ts helpers, and surfaces status/error messages.
+
+```ts
 // src/App.tsx
 import React, { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
