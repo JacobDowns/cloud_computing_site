@@ -1,5 +1,5 @@
 ---
-title: "Lab 2 — Extend Lab 1 with Google Sign-In + Firestore Notes (and Rules)"
+title: "Lab 2 — Clone the Starter Repo and Implement Cloud Notes"
 ---
 
 ## Overview
@@ -7,148 +7,70 @@ title: "Lab 2 — Extend Lab 1 with Google Sign-In + Firestore Notes (and Rules)
 ::: {.callout-note collapse="false"}
 ## lab2.exe — What you are doing
 
-In this lab, you will extend your Lab 1 app, into a simple notes app. The main features you'll implement:
+In this lab, you'll create a simple cloud notes app in Firebase. Although simple, this 
+demonstrates some features of a real app like user sign in with Google, and permanent storage of notes with Firestore. 
 
-- Allow users to sign in with Google
-- Allow users to create and delete personal notes
-- Store notes permanently in Firestore
-
-This lab is Spark (free tier) friendly. You won't need to enable the paid Blaze plan. As before, you'll deploy a real, live app at the end. 
+You will clone the official starter repo, configure Firebase for your account, run the app locally, and extend it to implement the notes backed by Firestore. Then we'll demonstrate and fix an insecure query using Firestore Rules.
 :::
 
-## Starting point
+## Step 0 — Clone the starter repository
 
-::: {.callout-important collapse="false"}
-## baseline.exe — Confirm Lab 1 works first
+::: {.callout-note collapse="false"}
+## git.exe — Starter repo
 
-Open your **Lab 1 repository** (the one you already deployed to Firebase Hosting).
-
-Before you begin Lab 2, confirm:
+Run:
 
 ```bash
+git clone https://github.com/Cloud-Course-Spring-2026/cloud-notes
+cd cloud-notes
 npm install
-npm run dev
-```
-
-and that your deploy still works:
-
-```bash
-npm run build
-firebase deploy
-```
-
-If your Lab 1 deploy is broken, fix it **before** continuing.
-:::
-
-## Prerequisites
-
-::: {.callout-warning collapse="false"}
-## prereq.dll — You need these tools
-
-After lab 1, you should already have these prerequisites. Make sure you have:
-
-- **Node.js (LTS)** (includes npm): https://nodejs.org  
-- Verify in a terminal:
-
-```bash
-node -v
-npm -v
-```
-
-- **Git** installed
-- A **GitHub** account
-- A **Google** account (for Firebase + Google Sign-In)
-- Firebase CLI installed:
-
-```bash
-npm install -g firebase-tools
-firebase --version
 ```
 :::
+
+## Part A — Create and configure a Firebase project
+
+## Step 1 — Create a Firebase project (student's own)
+1. Go to: https://console.firebase.google.com  
+2. Click **Add project**
+3. Name it: `cloud-notes-<yourname>` (or similar)
+4. Google Analytics can be enabled or disabled; it doesn't matter. 
+
+## Step 2 — Register a Web App (get config)
+To register your web app:
+
+- Navigate to: <br/>
+ Project settings → General → Your apps → Add app → Web
+- You may choose any nickname for you app. 
+- Check set up **Firebase Hosting** 
+- Copy the code snippet Firebase gives you containing things like the `apiKey`, `authDomain` and save it somewhere temporary. You'll paste them into `.env.local` shortly. Alternatively, you'll be able to retrieve this information later 
+
+## Step 3 — Enable Google Sign-In (Authentication)
+Next, we'll enable authentication in your project to allow users to sign in to your notes app with their Google account. 
+
+- In the Firebase Console go to: <br/>
+ Build → Authentication → Get Started → Sign-in method 
+- Under **Additional Providers** click on Google
+- Check **Enable**
+- You can use your gmail address for the support email
+- Click **Save**
+
+
+## Step 4 — Create a Firestore database
+To allow permanent storage of notes, we'll create a Firestore database. 
+
+
+- In the Firebase console go to: <br/>
+Build → Firestore Database → Create database  
+- Select **Standard Edition**
+- Choose any location (default is fine)
+- Start in **test mode** for now; we'll add rules later to control access.
 
 ---
 
-## Part A — Add Firebase services to your existing Lab 1 project
+## Part B — Configure the cloned project
 
-### Use the same Firebase project from Lab 1
-You will use your existing Firebase project (the one tied to your Hosting deploy). That keeps everything in one place.
-
-::: {.callout-tip collapse="false"}
-## hint.txt — Find your project id
-You probably only have one project in Firebase, but if not, in your repo, check `.firebaserc` for your project id. Example:
-
-```json
-{
-  "projects": {
-    "default": "my-project-id"
-  }
-}
-```
-:::
-
-## Step 1 — Enable Google Sign-In (Authentication)
-
-::: {.callout-important collapse="false"}
-## auth.exe — Enable provider
-
-* In the Firebse Console, with your project opened, go to **Build → Authentication → Sign-in method**
-* In the section on additional providers, click on Google. 
-* Check enable and use your gmail address as the support email. 
-* This allows “Sign in with Google” in your app.
-:::
-
-## Step 2 — Create a Firestore database
-
-::: {.callout-note collapse="false"}
-## db.exe — Firestore setup
-
-In the Firebse Console, with your project opened, go to **Build → Firestore Database → Create database**
-
-- Use standard edition. 
-- Pick any region
-- Click on start in **test mode** (temporary!)
-
-We will lock this down with rules later.
-:::
-
-## Step 3 — Register a Web App (to get config values)
-
-::: {.callout-note collapse="false"}
-## webapp.exe — Firebase config
-
-Hosting-only apps don’t always need a web config, but Auth + Firestore require this.
-
-- Go to Project settings → **General** → “Your apps” → **Web**
-- **Note:** Project settings looks like a little gear. 
-- Register an app name (e.g., `cloud-notes-web`) and copy the config values.
-- You can leave the "Firebase Hosting" check box unchecked. 
-- Note that this returns some information you'll need for the SDK later. I'd recommend copyting this into a temporary file on your PC now because you'll need this information in Step 6. However, you can also retrieve this later. 
-:::
-
----
-
-## Part B — Add Firebase SDK + env vars to your Lab 1 codebase
-
-## Step 4 — Install the Firebase SDK
-
-::: {.callout-note collapse="false"}
-## install.exe
-
-In your repo folder:
-
-```bash
-npm install firebase
-```
-:::
-
-## Step 5 — Create `.env.local` (do not commit)
-
-::: {.callout-warning collapse="false"}
-## env.dll — Local config
-
-Create a file named **`.env.local`** in the project root (same folder as `package.json`).
-
-Fill it with your Firebase config values (no quotes):
+## Step 5 — Create `.env.local` in repo root
+The `.env.local` file will store information needed to communicate with your Firebase app. Add these entries (no quotes) to a file called `.env.local` in the repo root:
 
 ```env
 VITE_FIREBASE_API_KEY=PASTE_ME
@@ -157,519 +79,72 @@ VITE_FIREBASE_PROJECT_ID=PASTE_ME
 VITE_FIREBASE_APP_ID=PASTE_ME
 ```
 
-Then ensure `.env.local` is in `.gitignore`:
+Note, you must name it `.env.local`. Also, confirm `.env.local` is listed in `.gitignore` (it should be already). While these aren't secrets, it's still good practice to make sure they are not commited. 
 
-```gitignore
-.env.local
-```
+**Restart** the dev server after editing env vars with `npm run dev`. 
 
-This file defines the information needed by the SDK. Basically it tells the app which Firebase project to talk to. 
-
-**Restart** `npm run dev` after editing `.env.local`.
-:::
-
----
-
-## Part C — Paste the code (copy/paste)
-
-::: {.callout-note collapse="false"}
-## code.exe — Files to create/replace
-
-Now you will paste code into these files (create them if needed):
-
-- `src/firebase.ts`
-- `src/auth.ts`
-- `src/notes.ts`
-- `src/App.tsx`
-
-**Tip:** If you see TypeScript warnings about types, use `import type { ... }`.
-:::
-
-## Step 6 — `src/firebase.ts`
-
-
-
-This file creates a single Firebase app instance from the config and exports ready-to-use handles for services. Import these handles (auth, db, etc.) from other modules instead of initializing Firebase multiple times. It answers the question “which Firebase project am I connected to?”
-
-```ts
-// src/firebase.ts
-
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-```
-
-## Step 7 — `src/auth.ts`
-
-Small wrapper functions around the Firebase Auth SDK. Exports functions to sign in (Google popup), sign out, and subscribe to auth state changes. Keeps authentication logic separate from UI so `App.tsx` can remain focused on rendering and state.
-
-```ts
-// src/auth.ts
-import {
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut,
-} from "firebase/auth";
-
-import type { User } from "firebase/auth";
-
-import { auth } from "./firebase";
-
-/**
- * Use one shared Google provider instance.
- * You can add scopes later if needed (not required for basic sign-in).
- */
-const provider = new GoogleAuthProvider();
-
-/**
- * Preferred flow for most desktop browsers.
- * Must be called from a user interaction (e.g., button click).
- */
-export async function signInWithGooglePopup(): Promise<User> {
-  const cred = await signInWithPopup(auth, provider);
-  return cred.user;
-}
-
-/**
- * Alternative flow for popup-blocked environments.
- * Call signInWithGoogleRedirect() on click, then on page load call
- * handleGoogleRedirectResult() once to finalize.
- */
-export async function signInWithGoogleRedirect(): Promise<void> {
-  await signInWithRedirect(auth, provider);
-}
-
-export async function handleGoogleRedirectResult(): Promise<User | null> {
-  const result = await getRedirectResult(auth);
-  return result?.user ?? null;
-}
-
-/** Sign out current user */
-export async function signOutUser(): Promise<void> {
-  await signOut(auth);
-}
-
-/**
- * Subscribe to auth state changes.
- * Returns an unsubscribe function you should call on cleanup.
- */
-export function subscribeToAuthChanges(
-  cb: (user: User | null) => void
-): () => void {
-  return onAuthStateChanged(auth, cb);
-}
-
-```
-
-## Step 8 — `src/notes.ts`
-
-Encapsulates Firestore operations: adding notes, deleting notes, and creating realtime subscriptions. Provides both the per-user query (subscribeToNotes) and the demo/all-notes subscription (`subscribeToAllNotes`).
-
-```ts
-// src/notes.ts
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
-
-import type { User } from "firebase/auth";
-import { db } from "./firebase";
-
-/**
- * Minimal Note shape returned to the UI
- */
-export type Note = {
-  id: string;
-  text: string;
-};
-
-/**
- * Add a new note for the given user
- */
-export async function addNote(user: User, text: string): Promise<void> {
-  await addDoc(collection(db, "notes"), {
-    uid: user.uid,
-    text,
-    createdAt: serverTimestamp(),
-  });
-}
-
-/**
- * Subscribe to the current user's notes in realtime.
- * Returns an unsubscribe function.
- *
- * The error callback is optional and will be called if the listener errors
- * (for example, permission-denied or missing-index).
- */
-export function subscribeToNotes(
-  user: User,
-  cb: (notes: Note[]) => void,
-  onError?: (err: Error) => void
-): () => void {
-  const q = query(
-    collection(db, "notes"),
-    where("uid", "==", user.uid),
-    orderBy("createdAt", "desc")
-  );
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const notes: Note[] = snapshot.docs.map((d) => ({
-        id: d.id,
-        text: d.data().text as string,
-      }));
-      cb(notes);
-    },
-    (error) => {
-      if (onError) onError(error as Error);
-      else console.error("subscribeToNotes error:", error);
-    }
-  );
-}
-
-/**
- * Demo helper: Subscribe to ALL notes in the collection (no where clause).
- * This intentionally requests every document so you can demonstrate why rules are necessary.
- * Returns an unsubscribe function.
- *
- * The error callback is optional and will be called on permission/index errors.
- */
-export function subscribeToAllNotes(
-  cb: (notes: Note[]) => void,
-  onError?: (err: Error) => void
-): () => void {
-  // No where() clause — requests entire collection
-  const q = query(collection(db, "notes"), orderBy("createdAt", "desc"));
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const notes: Note[] = snapshot.docs.map((d) => ({
-        id: d.id,
-        text: d.data().text as string,
-      }));
-      cb(notes);
-    },
-    (error) => {
-      if (onError) onError(error as Error);
-      else console.error("subscribeToAllNotes error:", error);
-    }
-  );
-}
-
-/**
- * Delete a note by ID
- */
-export async function deleteNote(noteId: string): Promise<void> {
-  await deleteDoc(doc(db, "notes", noteId));
-}
-```
-
-## Step 9 — `src/App.tsx`
-
-The single React component that wires the app together: subscribes to auth state, switches between the “logged out” and “notes” views, calls notes.ts helpers, and surfaces status/error messages.
-```ts
-// src/App.tsx
-import React, { useEffect, useState } from "react";
-import type { User } from "firebase/auth";
-
-import {
-  signInWithGooglePopup,
-  signOutUser,
-  subscribeToAuthChanges,
-} from "./auth";
-
-import { addNote, subscribeToNotes, subscribeToAllNotes, deleteNote } from "./notes";
-
-type Note = {
-  id: string;
-  text: string;
-};
-
-export default function App(): React.JSX.Element {
-  const [user, setUser] = useState<User | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [newText, setNewText] = useState<string>("");
-
-  // Demo toggle: show only my notes vs show all notes
-  // You can hide this behind a debug flag if desired.
-  const [showAll, setShowAll] = useState(false);
-
-  // Subscribe to auth state
-  useEffect(() => {
-    const unsub = subscribeToAuthChanges((u) => {
-      setUser(u);
-      if (!u) {
-        setNotes([]);
-      }
-    });
-    return () => unsub();
-  }, []);
-
-  // Subscribe to notes (either per-user or all)
-  useEffect(() => {
-    setErrorMsg(null);
-    if (!user && !showAll) {
-      // nothing to subscribe to when no user and not showing all
-      setNotes([]);
-      return;
-    }
-
-    setStatus("Loading notes...");
-    let unsub: () => void;
-
-    const handleError = (err: Error) => {
-      console.error("notes listener error:", err);
-      // Show a friendly message (detect common Firestore codes if desired)
-      setErrorMsg(err?.message ?? "Unknown error from Firestore listener.");
-      setStatus(null);
-    };
-
-    if (showAll) {
-      unsub = subscribeToAllNotes(
-        (fetched) => {
-          setNotes(fetched);
-          setStatus(null);
-        },
-        handleError
-      );
-    } else {
-      // user must be non-null here
-      unsub = subscribeToNotes(
-        user as User,
-        (fetched) => {
-          setNotes(fetched);
-          setStatus(null);
-        },
-        handleError
-      );
-    }
-
-    return () => {
-      try {
-        unsub();
-      } catch (e) {
-        // ignore
-      }
-    };
-  }, [user, showAll]);
-
-  // Auth handlers
-  async function handleSignIn() {
-    setStatus("Signing in...");
-    try {
-      await signInWithGooglePopup();
-      setStatus(null);
-    } catch (err: any) {
-      setStatus(err?.message ?? "Sign-in failed");
-    }
-  }
-
-  async function handleSignOut() {
-    setStatus("Signing out...");
-    try {
-      await signOutUser();
-      setStatus(null);
-    } catch (err: any) {
-      setStatus(err?.message ?? "Sign-out failed");
-    }
-  }
-
-  // Notes handlers
-  async function handleAddNote() {
-    if (!user) {
-      setStatus("You must be signed in to add a note.");
-      return;
-    }
-    const text = newText.trim();
-    if (!text) return;
-    setStatus("Saving note...");
-    setErrorMsg(null);
-    try {
-      await addNote(user, text);
-      setNewText("");
-      setStatus(null);
-    } catch (err: any) {
-      setStatus(null);
-      setErrorMsg(err?.message ?? "Failed to save note");
-    }
-  }
-
-  async function handleDeleteNote(id: string) {
-    setStatus("Deleting note...");
-    setErrorMsg(null);
-    try {
-      await deleteNote(id);
-      setStatus(null);
-    } catch (err: any) {
-      setStatus(null);
-      setErrorMsg(err?.message ?? "Failed to delete note");
-    }
-  }
-
-  if (!user) {
-    return (
-      <div style={{ padding: 20, maxWidth: 640 }}>
-        <h1>Cloud Notes</h1>
-        <p>Sign in with Google to create and view your notes.</p>
-        <button onClick={handleSignIn}>Sign in with Google</button>
-
-        {status && <div style={{ marginTop: 12 }}><em>{status}</em></div>}
-        {errorMsg && <div style={{ marginTop: 12, color: "crimson" }}>{errorMsg}</div>}
-
-        <hr style={{ margin: "20px 0" }} />
-        <p style={{ fontSize: 13, color: "#555" }}>
-          <b>Note:</b> If popups are blocked, allow popups or use the redirect flow.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: 20, maxWidth: 800 }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h1 style={{ margin: 0 }}>Cloud Notes</h1>
-        <div style={{ marginLeft: "auto", textAlign: "right" }}>
-          <div>
-            <strong>{user.displayName ?? user.email ?? "Signed in"}</strong>
-          </div>
-          <div style={{ fontSize: 12, color: "#555" }}>{user.email}</div>
-          <div style={{ marginTop: 8 }}>
-            <button onClick={handleSignOut}>Sign out</button>
-          </div>
-        </div>
-      </header>
-
-      <section style={{ marginTop: 18 }}>
-        <h3>My notes</h3>
-
-        {/* Demo toggle: show all vs only my notes */}
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, marginRight: 8 }}>
-            <input
-              type="checkbox"
-              checked={showAll}
-              onChange={(e) => setShowAll(e.target.checked)}
-            />{" "}
-            Demo: subscribe to <strong>all</strong> notes (insecure)
-          </label>
-          <div style={{ fontSize: 12, color: "#666" }}>
-            Toggle this to demonstrate why Firestore rules are required.
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input
-            placeholder="Write a short note..."
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddNote();
-            }}
-            style={{ flex: 1, padding: "8px 10px" }}
-          />
-          <button onClick={handleAddNote}>Add</button>
-        </div>
-
-        {status && <div style={{ marginBottom: 12 }}><em>{status}</em></div>}
-        {errorMsg && <div style={{ marginBottom: 12, color: "crimson" }}>{errorMsg}</div>}
-
-        <div>
-          {notes.length === 0 ? (
-            <div style={{ color: "#666" }}>You have no notes yet.</div>
-          ) : (
-            <ul style={{ paddingLeft: 18 }}>
-              {notes.map((n) => (
-                <li
-                  key={n.id}
-                  style={{
-                    marginBottom: 8,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <div style={{ flex: 1 }}>{n.text}</div>
-                  <div>
-                    <button onClick={() => handleDeleteNote(n.id)} title="Delete note">Delete</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <footer style={{ marginTop: 28, fontSize: 13, color: "#555" }}>
-        <div><strong>Debug:</strong> UID: {user.uid}</div>
-        <div style={{ marginTop: 6 }}>
-          Next step: secure your data with Firestore Security Rules so only you can read and write your notes.
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-```
-
----
-
-## Part D — Run locally and verify
-
-## Step 10 — Start the dev server
-
-::: {.callout-note collapse="false"}
-## devserver.exe
+## Step 6 — Install Firebase SDK 
+In the root directory of the cloned repo run:
 
 ```bash
-npm run dev
+npm install firebase
 ```
 
-Open the URL shown (usually `http://localhost:5173`).
+---
 
-- Click **Sign in with Google**
-- Add 2–3 notes
-- Confirm notes persist across refresh
-:::
+## Part C — Main files
 
-::: {.callout-warning collapse="true"}
-## missing-index.txt — If you see “query requires an index”
+Take a brief look at the main files that control the app provided in the starter repo. You won't need to understand the details of this code, but it's worth looking at how the front end code uses the Firebase SDK and the basic operations that are happening in the notes app. Here are the four scripts to look at:
 
-If you get an error like:
+### `src/firebase.ts`
+> Initializes the Firebase app and exports `auth` and `db` handles for use by other modules.
 
-> `failed-precondition: The query requires an index`
+### `src/auth.ts`
+> Small wrappers around Firebase Auth for sign-in, sign-out, and auth-state subscription.
 
-Click the link in your browser console to create the Firestore index, then wait until it is “Ready”.
+### `src/notes.ts`
+> Encapsulates Firestore queries and writes. Provides per-user subscription and a demo all-notes subscription.
 
-This commonly happens when using both:
-- `where("uid" == ...)` and
-- `orderBy("createdAt")`
+### `src/App.tsx`
+> The UI glue: subscribes to auth, subscribes to notes, and renders the note list and controls (including the insecure demo toggle).
+
+---
+
+## Part D — First deployment 
+
+::: {.callout-important collapse="false"}
+## deploy-first.exe — Deploy your app
+
+Now, deploy your app once and test the deployed version.  
+
+1. Log in and select your Firebase project for the CLI:
+
+```bash
+firebase login
+firebase use --add
+```
+
+Choose your project and set the alias to `default`.
+
+2. Build the production files:
+
+```bash
+npm run build
+```
+
+3. Deploy to Firebase Hosting:
+
+```bash
+firebase deploy
+```
+
+When deployment finishes, Firebase will print a Hosting URL like:
+
+```
+https://<your-project-id>.web.app
+```
+
+Make sure you're able to log in to your app and add notes. Ensure that notes are persistent. Once you've tested your app, save the URL. Now you're ready to share it with classmates!
 :::
 
 ---
@@ -677,28 +152,23 @@ This commonly happens when using both:
 ## Part E — In-class activity: the insecure query
 
 ::: {.callout-important collapse="false"}
-## activity.exe — Try reading other people’s notes (in a controlled way)
+## activity.exe — Interacting with classmates’ apps
 
-1. Pair up with a classmate.
-2. Each of you opens **your own** app in the browser and signs in.
-3. Each person adds 2–3 notes.
-4. Now, in your app, toggle:
+- Now, find a classmate to share your URL with. Have them log in and add some notes. 
+- Return to your own deployed app and toggle **“Demo: subscribe to all notes”**
+- If your Firestore rules are still in **test mode**, you will likely be able to see notes from other users.
 
-**“Demo: subscribe to all notes”**
-
-If your Firestore rules are still in **test mode**, you will likely be able to see notes from other users.
-
-That is the problem we will fix next.
+That is the security problem we will fix next.
 :::
 
 ---
 
-## Part F — Fix it: Firestore Security Rules (Authorization)
+## Part F — Fixing the problem: Firestore Security Rules
 
-## Step 11 — Add Firestore rules
+## Step 8 — Add Firestore rules
 
 ::: {.callout-note collapse="false"}
-## rules.exe — Server-side policy
+## rules.exe — Server-side authorization
 
 Firebase Console → Firestore Database → **Rules**
 
@@ -710,12 +180,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /notes/{noteId} {
-      // Create: must be signed in and must set uid to your uid
       allow create: if request.auth != null
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.text is string;
 
-      // Read/update/delete: only if the document belongs to you
       allow read, update, delete: if request.auth != null
                                   && resource.data.uid == request.auth.uid;
     }
@@ -726,38 +194,26 @@ service cloud.firestore {
 Click **Publish**.
 :::
 
-## Step 12 — Verify the fix
+## Step 9 — Verify the fix
 
 ::: {.callout-tip collapse="false"}
 ## verify.exe
 
-Return to your app:
+Return to your **deployed app**:
 
-- Toggle **Demo: subscribe to all notes**
-- You should now see a **permission** error (or only your permitted documents)
-- Toggle back to “my notes” and confirm your notes still load
+- Toggle **“Demo: subscribe to all notes”**
+- You should now see a permission error (or only your own notes)
+- Toggle back to the normal view and confirm your notes still load
 
-This proves that **authorization lives at the database boundary**, not in the UI.
+This demonstrates that **authorization is enforced by Firestore rules, not by the UI**.
 :::
 
 ---
 
-## Part G — Deploy (same workflow as Lab 1)
+## Part G — (Optional) Redeploy after rules changes
 
-## Step 13 — Deploy your updated app
-
-::: {.callout-note collapse="false"}
-## deploy.exe
-
-Build and deploy:
-
-```bash
-npm run build
-firebase deploy
-```
-
-Open the printed URL (ends with `.web.app`).
-:::
+Firestore rules take effect immediately and do **not** require redeploying your app.  
+You only need to redeploy if you change frontend code.
 
 ---
 
@@ -769,7 +225,7 @@ Open the printed URL (ends with `.web.app`).
 Submit:
 
 1. Your Firebase Hosting URL
-2. A short response (3–6 sentences) answering:
+2. Short responses to the following questions:
    - What is the difference between **authentication** and **authorization**?
    - Why did the “show all notes” query work before rules but fail after rules?
    - Where is security enforced in this architecture?
@@ -777,23 +233,13 @@ Submit:
 
 ---
 
-## Troubleshooting
+## Troubleshooting notes
 
 ::: {.callout-warning collapse="true"}
 ## errorlog.txt
 
-**Sign-in button does nothing**  
-- Ensure Google provider is enabled in Firebase Auth
-- Check browser popup settings
-
-**Env vars seem ignored**  
-- Restart `npm run dev` after editing `.env.local`
-- Confirm variables begin with `VITE_`
-
-**Permission denied after adding rules**  
-- Confirm notes include `uid` field
-- Confirm rules match `uid == request.auth.uid`
-
-**Index required**  
-- Click the console link in the Firestore error to create the composite index
+- If notes do not persist, verify `.env.local` projectId matches the Firebase Console project.
+- Restart `npm run dev` after editing `.env.local`.
+- If snapshot listeners hang, try `initializeFirestore(app, { experimentalForceLongPolling: true })`.
+- Firestore rules changes do not require redeploying Hosting.
 :::
