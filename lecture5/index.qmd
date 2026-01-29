@@ -1,0 +1,387 @@
+---
+title: "Lecture 4 — Git, GitHub & The Robots (CI/CD)"
+---
+
+::: {.callout-note collapse="false"}
+## agenda.txt — Today’s plan
+
+Today we move from "saving files" to "managing history," and then we teach robots to do the heavy lifting for us.
+
+1.  **The Essentials**: Commits, Staging, and Remotes (Refresher)
+2.  **Git vs. GitHub**: The Tool vs. The Service
+3.  **Time Travel Mechanics**: HEAD, Relative Offsets, and Detached States
+4.  **The Multiverse**: Merge vs. Rebase
+5.  **CI/CD**: What is it and why do we care?
+6.  **GitHub Actions**: The "Robot Butler" for your code
+:::
+
+## Why this lecture exists
+
+::: {.callout-important collapse="false"}
+## version_control.nfo — Stop naming files "final_v2_REAL.zip"
+
+In the cloud, you are rarely working alone, and you are rarely working on code that stays on your computer.
+
+-   **Git** is your safety net. It lets you destroy your code and instantly restore it.
+-   **CI/CD** is your automation. It ensures you never accidentally break the production app just because you were tired on a Friday afternoon.
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: The Essentials (Refresher)
+
+While you're probably familar with these concepts, its worth refreshing some Git basics.
+
+::: {.callout-note collapse="false"}
+## save_game.sav — What is a Commit?
+
+-   A **Commit** is not just "saving a file." It is a snapshot of your **entire project folder** at a specific moment in time.
+-   Think of it like a **Save Point** in a video game. \* If you die (break your code), you respawn at the last Commit.
+
+**The Three-Step Workflow:**
+
+1.  **Working Directory:** You edit ssome files
+2.  **Staging Area (`git add`):** You put specific files into the staging area
+3.  **Commit (`git commit`):** You commit whatever is in the staging area, creating a snapshot for posterity
+:::
+
+::: {.callout-tip collapse="false"}
+## history.log — Seeing the Past
+
+How do you see the timeline of commits?
+
+``` bash
+git log
+```
+
+Better yet, use the "pretty" version to see branches:
+
+``` bash
+git log --oneline --graph --all
+```
+
+**Structure of a Log Entry:**
+
+-   **Hash (`a1b2c3d`):** The unique ID of the commit.
+-   **Author:** Who did it.
+-   **Date:** When they did it.
+-   **Message:** "Fixed the login bug" (Please write good messages, unlike me).
+:::
+
+::: {.callout-warning collapse="false"}
+## exclude.txt — The .gitignore File
+
+Often, there are files you never want to commit:
+
+1.  **Dependencies:** `node_modules/` (It's huge; 500MB+).
+2.  **Secrets:** `.env` (API Keys, Passwords).
+3.  **Build Artifacts:** `dist/` or `build/` (The generated files).
+
+**The Solution:** Create a file named `.gitignore` and list the folders there. Git will become blind to them.
+:::
+
+::: {.callout-note collapse="false"}
+## network.net — Remotes and Origins
+
+Your code lives on your laptop. A **Remote** is a copy of your code living somewhere else (like GitHub).
+
+-   **`origin`:** This is just a nickname. Instead of typing `https://github.com/me/my-repo.git` every time, Git lets us call it `origin`.
+
+**Connecting to the Cloud:** If you have a local repo and want to attach it to a new GitHub repo:
+
+``` bash
+# 1. Add the "phone number" of the remote server
+git remote add origin [https://github.com/user/repo.git](https://github.com/user/repo.git)
+
+# 2. Push your main branch to the origin
+git push -u origin main
+```
+:::
+
+::: {.callout-note collapse="false"}
+## branches.tree — Alternate Realities
+
+By default, Git is a straight line (`main`). But what if you want to experiment without breaking the working code? You create a **Branch**.
+
+**The Sci-Fi Analogy:**
+
+-   **`main`:** The "Sacred Timeline." This code works. It is the truth.
+-   **`feature-x`:** A divergent timeline. You can mess up here, delete files, or crash the app. It does not affect the Sacred Timeline.
+
+**Core Commands:**
+
+``` bash
+# 1. Create a new dimension (Branch)
+git branch feature-login
+
+# 2. Travel to that dimension
+git checkout feature-login
+
+# Shortcut: Do both at once
+git checkout -b feature-login
+```
+
+![Diverging timelines.](images/future.jpg){fig-align="center"}
+
+### Visualizing Branches
+> [A highly recommended and fun tool for learning git branching](https://learngitbranching.js.org/)
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: The Tool vs. The Platform
+
+::: {.callout-tip collapse="false"}
+## distinction.txt — Git is not GitHub
+
+A common confusion is treating **Git** and **GitHub** as the same thing. They are not.
+
+| Feature | **Git** | **GitHub / GitLab / Bitbucket** |
+|:-----------------------|:-----------------------|:-----------------------|
+| **Role** | The Engine (Software) | The Garage (Hosting Service) |
+| **Location** | Runs locally on your laptop. | Runs on a server in the cloud. |
+| **Analogy** | Like **Microsoft Word**. You use it to write the document on your PC. | Like **Google Drive**. You upload your document there to share and backup. |
+| **Dependencies** | Works 100% offline. | Requires internet. |
+| **Key Features** | Commits, Branches, Merges. | Pull Requests, Issues, Actions, CI/CD. |
+
+*You can use Git without GitHub. You cannot use GitHub without Git.*
+:::
+
+
+### Pull Requests 
+
+::: {.callout-tip collapse="false"}
+## pr_check.exe — Not a Git Feature
+
+A **pull request** (PR) is a formal request for project maintainers to pull your changes from your feature branch into the target branch (commonly the `main` branch. 
+
+- Technically, a pull request is is not actually a git command. It is a feature invented by platforms like GitHub.
+
+**Terminology:**
+
+* **GitHub / Bitbucket:** "Pull Request" (PR).
+* **GitLab:** "Merge Request" (MR).
+
+>**The Concept:** Git allows you to merge code whenever you want. This can be dangerous in a team. A **PR** is a wrapper around a merge that forces a conversation.
+
+**The Workflow:**
+
+1.  **You:** Push `feature-login` branch to GitHub.
+2.  **You:** Click "Create Pull Request." (Essentially saying: *"I think I'm done. Please review this."*)
+3.  **Team:** Reads your code, leaves comments ("Fix this line"), and approves it.
+4.  **GitHub:** Only allows the **Merge Button** to be clicked after approval (and after CI/CD passes!).
+:::
+
+::: {.callout-important collapse="false"}
+## access_denied.err — The Locked Door
+
+In a professional setting, if you try to run:
+`git push origin main`
+
+You will see this error:
+`remote: error: GH006: Protected branch update failed for refs/heads/main.`
+
+**Why?**
+
+Teams use **Branch Protection Rules** to physically lock the `main` branch.
+
+* **Rule 1:** "Require a Pull Request before merging."
+* **Rule 2:** "Require status checks to pass" (CI/CD must be green).
+* **Rule 3:** "Require 1 approving review" (Another human must say yes).
+
+This prevents "Cowboy Coding" where someone pushes broken code directly to production without the rest of the team signing off on it. 
+:::
+
+------------------------------------------------------------------------
+
+## Part 3: Time Travel Mechanics
+
+::: {.callout-note collapse="false"}
+## head_pointer.dll — You Are Here
+
+In Git, **HEAD** is a pointer or reference to the current commit on the current branch. Usually, HEAD points to a **branch** (like `main`), and the branch points to the latest **commit**.
+
+### **Relative Offsets (Math with Time)**
+
+Sometimes you want to reference "The commit before this one." We use math for that:
+
+-   `HEAD`: Where I am right now.
+-   `HEAD~1`: The parent of this commit (1 step back).
+-   `HEAD~2`: The grandparent (2 steps back).
+-   `HEAD~5`: 5 commits ago.
+
+**Example Use Case:** "I want to undo the last 3 commits." `git reset --hard HEAD~3`
+:::
+
+::: {.callout-warning collapse="false"}
+## detached_head.err — Floating in Space
+
+If you run `git checkout <commit-hash>` (jumping to a specific point in history instead of a branch name), you enter **Detached HEAD state**.
+
+**What this means:**
+
+-   You are looking at a snapshot of the past.
+-   **Danger:** If you make new commits here, **they belong to no branch.**
+-   If you switch back to `main` without creating a new branch, your new commits will be lost in the void (garbage collected).
+
+**How to fix it:** If you made cool changes while detached, run: `git checkout -b new-feature-branch.` This creates a timeline (branch) to save your work.
+:::
+
+------------------------------------------------------------------------
+
+## Part 4: Merge vs. Rebase
+
+::: {.callout-note collapse="false"}
+## integration.exe — Combining Timelines
+
+Let's say you were working on a new login feature on the `feature-login` branch. You're finished, so how to you incorporate this work into `main`?
+
+### **Option A: Merge (`git merge`)**
+
+Integrates changes by creating a new commit (the merge commit) that ties two branch histories together.
+
+-   **Pros:** Preserves the exact history, shows when branches diverged and merged, safer for shared branches.
+-   **Cons:** Creates extra merge commits, leading to a "messy" or cluttered history, especially with frequent merges.
+-   **When to use:** When bringing a finished feature into a shared branch like `main`.
+
+### **Option B: Rebase (`git rebase`)**
+
+Moves your feature branch's base to the tip of the target branch (e.g., main), reapplying your commits one by one as if they were made later.
+
+-   **Pros:** Creates a clean, linear project history (no merge commits), easier to read and navigate with `git log`.
+-   **Cons:** Rewrites history (new commit IDs), which can cause major issues if done on shared branches; conflicts may need resolving multiple times (once per commit).
+-   **When to use:** To update your local feature branch with the latest changes from main to keep your work current and clean before you create a pull request.
+
+![Merge v. Rebase](images/merge.png){fig-align="center"}
+:::
+
+::: {.callout-warning collapse="false"}
+## rebase.txt — The Golden Rule of Rebase
+
+Don't rebase a public branch. If other people are working on your branch, and you rebase it, you break their history. Only rebase code that exists solely on your machine.
+:::
+
+------------------------------------------------------------------------
+
+## Part 5: CI/CD (The Robots)
+
+::: {.callout-note collapse="false"}
+## automation.scr — What is CI/CD?
+
+-   **CI/CD** stands for **Continuous Integration / Continuous Deployment**.
+-   It is a fancy way of saying: **"Scripts that run automatically when you push code."**
+
+### **CI (Continuous Integration)**
+
+-   **The Goal:** "Does it break?"
+-   **The Action:** Every time you push, a robot downloads your code, installs dependencies, and runs your tests.
+-   **The Result:** If it fails, the robot screams (Red X), and you are *not allowed* to merge.
+
+### **CD (Continuous Deployment)**
+
+-   **The Goal:** "Ship it!"
+-   **The Action:** If the tests pass (Green Check), the robot automatically uploads the code to the Cloud (Firebase, AWS).
+-   **The Result:** You commit code, and 2 minutes later, the website is updated.
+:::
+
+------------------------------------------------------------------------
+
+## Part 6: GitHub Actions
+
+::: {.callout-important collapse="false"}
+## workflow.yaml — Defining the Robot
+
+GitHub Actions is configured using **YAML** files inside `.github/workflows/`. It has three main concepts:
+
+1.  **Event (The Trigger):** "When should I wake up?"
+    -   `on: push`
+    -   `on: pull_request`
+2.  **Job (The Task):** "What machine do I need?"
+    -   `runs-on: ubuntu-latest` (Give me a fresh Linux VM).
+    -   `runs-on: windows-latest`
+3.  **Steps (The Recipe):** "What commands do I run?"
+    -   "Checkout code"
+    -   "Install Node.js"
+    -   "Run tests"
+:::
+
+### Realistic Examples
+
+::: {.callout-note collapse="false"}
+## example_1_gatekeeper.yaml — The "Did I Break It?" Workflow
+
+This workflow runs on every Pull Request. If the tests fail, GitHub blocks the merge.
+
+``` yaml
+name: CI Gatekeeper
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install Dependencies
+        run: npm ci
+      - name: Run Tests
+        run: npm test
+```
+:::
+
+::: {.callout-tip collapse="false"}
+## example_2_shipper.yaml — The "Deploy to Firebase" Workflow
+
+This only runs when we merge into `main`. It automatically deploys the app. *(Note: This requires a Secret Token stored in GitHub settings)*
+
+``` yaml
+name: Deploy to Production
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build App
+        run: |
+          npm ci
+          npm run build
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          channelId: live
+          projectId: my-cloud-course-project
+```
+:::
+
+------------------------------------------------------------------------
+
+## Interactive Activity
+
+::: {.callout-tip collapse="false"}
+## lab_preview.exe — Your turn
+
+In the next lab, you will: 1. Intentionally write a "broken" test case. 2. Push it to GitHub. 3. Watch the "Actions" tab turn **Red** (The Robot catches you). 4. Fix the code. 5. Watch it turn **Green** and automatically deploy your site.
+:::
+
+------------------------------------------------------------------------
+
+## Summary
+
+::: {.callout-note collapse="false"}
+## shutdown.exe — Key Takeaways
+
+-   **Commits** are save points; **Remotes** are backups.
+-   **Git** is the engine; **GitHub** is the host.
+-   **Merge** preserves history; **Rebase** cleans it.
+-   **HEAD** is your current location.
+-   **CI/CD** robots ensure you never break production.
+:::

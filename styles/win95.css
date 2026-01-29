@@ -69,15 +69,18 @@ p code, li code {
 }
 
 /* ---------------------------
-   Win95 Callout Styling
+   Win95 Callout Styling (Updated)
    --------------------------- */
 
 /* Outer frame */
 .callout {
   background: var(--win-bg) !important;
-  border: 2px solid #000 !important;
-  border-radius: 2px !important;
-  box-shadow: 3px 3px 0 #000 !important;
+  /* 3D Border Effect */
+  border: 2px solid var(--win-light) !important;
+  border-right-color: var(--win-dark) !important;
+  border-bottom-color: var(--win-dark) !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000 !important;
   margin: 14px 0 !important;
   overflow: hidden;
 }
@@ -88,11 +91,11 @@ p code, li code {
   display: none !important;
 }
 
-/* Titlebar (collapsible) */
-details.callout > summary.callout-header {
-  background: var(--win-blue) !important;
+/* --- Header Layout (Shared) --- */
+details.callout > summary.callout-header,
+div.callout > div.callout-header {
   color: #fff !important;
-  padding: 7px 10px !important;
+  padding: 6px 10px !important;
   font-weight: 700 !important;
   display: flex !important;
   align-items: center !important;
@@ -100,6 +103,8 @@ details.callout > summary.callout-header {
   cursor: pointer !important;
   user-select: none;
   list-style: none;
+  font-family: sans-serif;
+  border-bottom: none !important;
 }
 
 /* Hide default marker */
@@ -107,15 +112,19 @@ details.callout > summary.callout-header::-webkit-details-marker {
   display: none;
 }
 
-/* Titlebar (non-collapsible fallback) */
-div.callout > div.callout-header {
-  background: var(--win-blue) !important;
-  color: #fff !important;
-  padding: 7px 10px !important;
-  font-weight: 700 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
+/* --- Header Colors --- */
+
+/* 1. Safe Types (Standard Blue Gradient) */
+.callout-note > .callout-header,
+.callout-tip > .callout-header {
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%) !important;
+}
+
+/* 2. Critical Types (Red Alert Gradient) */
+.callout-important > .callout-header,
+.callout-warning > .callout-header,
+.callout-caution > .callout-header {
+  background: linear-gradient(90deg, #ff0000 0%, #800000 100%) !important;
 }
 
 /* Title text */
@@ -126,31 +135,30 @@ div.callout > div.callout-header {
   text-overflow: ellipsis;
 }
 
-/* Body */
+/* Body Content */
 .callout .callout-body,
 .callout .callout-content {
   padding: 12px 14px !important;
   background: var(--win-bg) !important;
+  border-top: 1px solid #000 !important; /* Separator line */
 }
 
-/* [+] / [–] indicator */
-details.callout > summary.callout-header
-.callout-title-container::after {
+/* [+] / [–] indicator logic */
+details.callout > summary.callout-header .callout-title-container::after {
   content: " [–]";
   color: #fff;
   font-weight: 700;
   margin-left: 10px;
 }
 
-details.callout:not([open]) > summary.callout-header
-.callout-title-container::after {
+details.callout:not([open]) > summary.callout-header .callout-title-container::after {
   content: " [+]";
 }
 
 /* Focus outline */
 details.callout > summary.callout-header:focus-visible {
   outline: 2px dotted #fff;
-  outline-offset: 2px;
+  outline-offset: -4px;
 }
 
 /* ---------------------------

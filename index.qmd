@@ -18,3 +18,4 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 3 — Web Fundamentals](lecture3/index.qmd)
 - [Lecture 4 — Authentication + Firestore](lecture4/index.qmd)
 - [Lab 2 — Notes App](lab2/index.qmd)
+- [Lecture 5 — Git, GitHub, and GitHub Actions](lecture5/index.qmd)
