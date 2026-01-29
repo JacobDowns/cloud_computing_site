@@ -1,5 +1,5 @@
 ---
-title: "Lecture 4 — Git, GitHub & The Robots (CI/CD)"
+title: "Lecture 5 — Git"
 ---
 
 ::: {.callout-note collapse="false"}
@@ -9,10 +9,8 @@ Today we move from "saving files" to "managing history," and then we teach robot
 
 1.  **The Essentials**: Commits, Staging, and Remotes (Refresher)
 2.  **Git vs. GitHub**: The Tool vs. The Service
-3.  **Time Travel Mechanics**: HEAD, Relative Offsets, and Detached States
+3.  **Time Travel Mechanics**: HEAD, Relative Offsets, Checkout, Reset, Revert, and Detached States
 4.  **The Multiverse**: Merge vs. Rebase
-5.  **CI/CD**: What is it and why do we care?
-6.  **GitHub Actions**: The "Robot Butler" for your code
 :::
 
 ## Why this lecture exists
@@ -20,10 +18,13 @@ Today we move from "saving files" to "managing history," and then we teach robot
 ::: {.callout-important collapse="false"}
 ## version_control.nfo — Stop naming files "final_v2_REAL.zip"
 
-In the cloud, you are rarely working alone, and you are rarely working on code that stays on your computer.
+While git is very powerful, we often learn it in a haphazard way. This lecture attempts to present git as a tool for managing timelines instead of saving files.
+:::
 
--   **Git** is your safety net. It lets you destroy your code and instantly restore it.
--   **CI/CD** is your automation. It ensures you never accidentally break the production app just because you were tired on a Friday afternoon.
+::: {.callout-note collapse="false"}
+## timelines.jpg
+
+![Movie timelines. ](images/timelines.jpg){fig-align="center"}
 :::
 
 ------------------------------------------------------------------------
@@ -36,11 +37,12 @@ While you're probably familar with these concepts, its worth refreshing some Git
 ## save_game.sav — What is a Commit?
 
 -   A **Commit** is not just "saving a file." It is a snapshot of your **entire project folder** at a specific moment in time.
--   Think of it like a **Save Point** in a video game. \* If you die (break your code), you respawn at the last Commit.
+-   Think of it like a **Save Point** in a video game.
+-   If you die (break your code), you respawn at the last Commit.
 
 **The Three-Step Workflow:**
 
-1.  **Working Directory:** You edit ssome files
+1.  **Working Directory:** You edit some files
 2.  **Staging Area (`git add`):** You put specific files into the staging area
 3.  **Commit (`git commit`):** You commit whatever is in the staging area, creating a snapshot for posterity
 :::
@@ -124,6 +126,7 @@ git checkout -b feature-login
 ![Diverging timelines.](images/future.jpg){fig-align="center"}
 
 ### Visualizing Branches
+
 > [A highly recommended and fun tool for learning git branching](https://learngitbranching.js.org/)
 :::
 
@@ -147,22 +150,21 @@ A common confusion is treating **Git** and **GitHub** as the same thing. They ar
 *You can use Git without GitHub. You cannot use GitHub without Git.*
 :::
 
-
-### Pull Requests 
+### Pull Requests
 
 ::: {.callout-tip collapse="false"}
 ## pr_check.exe — Not a Git Feature
 
-A **pull request** (PR) is a formal request for project maintainers to pull your changes from your feature branch into the target branch (commonly the `main` branch. 
+A **pull request** (PR) is a formal request for project maintainers to pull your changes from your feature branch into the target branch (commonly the `main` branch.
 
-- Technically, a pull request is is not actually a git command. It is a feature invented by platforms like GitHub.
+-   Technically, a pull request is is not actually a git command. It is a feature invented by platforms like GitHub.
 
 **Terminology:**
 
-* **GitHub / Bitbucket:** "Pull Request" (PR).
-* **GitLab:** "Merge Request" (MR).
+-   **GitHub / Bitbucket:** "Pull Request" (PR).
+-   **GitLab:** "Merge Request" (MR).
 
->**The Concept:** Git allows you to merge code whenever you want. This can be dangerous in a team. A **PR** is a wrapper around a merge that forces a conversation.
+> **The Concept:** Git allows you to merge code whenever you want. This can be dangerous in a team. A **PR** is a wrapper around a merge that forces a conversation.
 
 **The Workflow:**
 
@@ -175,21 +177,19 @@ A **pull request** (PR) is a formal request for project maintainers to pull your
 ::: {.callout-important collapse="false"}
 ## access_denied.err — The Locked Door
 
-In a professional setting, if you try to run:
-`git push origin main`
+In a professional setting, if you try to run: `git push origin main`
 
-You will see this error:
-`remote: error: GH006: Protected branch update failed for refs/heads/main.`
+You will see this error: `remote: error: GH006: Protected branch update failed for refs/heads/main.`
 
 **Why?**
 
 Teams use **Branch Protection Rules** to physically lock the `main` branch.
 
-* **Rule 1:** "Require a Pull Request before merging."
-* **Rule 2:** "Require status checks to pass" (CI/CD must be green).
-* **Rule 3:** "Require 1 approving review" (Another human must say yes).
+-   **Rule 1:** "Require a Pull Request before merging."
+-   **Rule 2:** "Require status checks to pass" (CI/CD must be green).
+-   **Rule 3:** "Require 1 approving review" (Another human must say yes).
 
-This prevents "Cowboy Coding" where someone pushes broken code directly to production without the rest of the team signing off on it. 
+This prevents "Cowboy Coding" where someone pushes broken code directly to production without the rest of the team signing off on it.
 :::
 
 ------------------------------------------------------------------------
@@ -227,7 +227,99 @@ If you run `git checkout <commit-hash>` (jumping to a specific point in history 
 **How to fix it:** If you made cool changes while detached, run: `git checkout -b new-feature-branch.` This creates a timeline (branch) to save your work.
 :::
 
+### The Time Cop Protocol (Undo Strategies)
+
+::: {.callout-note collapse="false"}
+## paradox_prevention.doc — Choosing your Weapon
+
+When you make a mistake, you have three ways to manipulate the space-time continuum. The difference isn't just "how" they work, but **what happens to the timeline**.
+:::
+
+![](images/timecop.jpg){fig-align="center" width="571"}
+
+### 1. `git checkout`
+
+> **"I just want to see what the code looked like last Tuesday."**
+
+-   **The Idea:** You travel back to a specific moment in history. You can look around, run the code, and examine files. However, you are just a "Ghost."
+-   **The Rules:** You are **not** changing the timeline. You are just moving your camera to a previous frame.
+-   **Safety:** **100% Safe.**
+
+### 2. `git revert`
+
+> **"I pushed a bug to production and need to fix it ASAP."**
+
+-   **The Idea:** You cannot stop the explosion (Bug) that happened yesterday. It is a fixed point in time; it is already in the history books. However, you can create a **new event** today that perfectly reconstructs the building.
+-   **The Result:** The timeline grows longer.
+    -   Event A: "Villain destroys City" (The Bug).
+    -   Event B: "Hero rebuilds City" (The Revert).
+-   **Safety:** You are basically trying to change a singular event (commit) in the past but otherwise keep the timeline intact. This has potential side effects but it erases no history. 
+
+### 3. `git reset`
+
+> **"I messed up locally and want to pretend it never happened."**
+
+-   **The Idea:** You travel back to yesterday morning and stop yourself from ever writing that bad code. Everything that happened between then and now is **erased**. It ceases to exist.
+-   **The Result:** The timeline gets shorter. The events are gone.
+-   **Safety:** **DANGEROUS.**
+    -   If you prune a timeline that your teammates are currently living in (a Public Branch), you create a **Paradox** (Merge Conflicts).
+    -   **Rule:** Only prune your own private timelines.
+
+### Summary Table
+
+| Command    | Concept             | Changes History?      | Safe for Public Repos? |
+|:----------------|:----------------|:------------------|:-------------------|
+| `checkout` | **Observation**     | No                    | ✅ Yes                 |
+| `revert`   | **Counter-Measure** | No (Adds to it)       | ✅ Yes                 |
+| `reset`    | **Erasure**         | **Yes (Destructive)** | ❌ **NO**              |
+
 ------------------------------------------------------------------------
+
+### The Mechanics of Reset (Soft vs. Hard)
+
+::: {.callout-important collapse="false"}
+## git_internals.dll — The Three Trees
+
+To understand reset, it helpf to visualize where your code lives.
+
+1.  **HEAD (The Repository):** The saved history.
+2.  **Index (Staging):** The "Draft" you are about to commit.
+3.  **Work Dir (Your Disk):** The raw files you are editing.
+:::
+
+### Scenario: The "Bad Commit"
+
+You just ran `git commit`, but you realized you forgot to include a file, or you put your API key in the code. You want to undo that commit (`Commit B`) and go back to `Commit A`.
+
+### Option 1: `git reset --soft HEAD~1`
+
+**"Move the History, Keep the Progress."**
+
+-   **HEAD:** Moves back to `Commit A`.
+-   **Index (Staging):** Stays the same. The changes from `Commit B` are left sitting in the Staging Area ("Green" in `git status`).
+-   **Work Dir:** **STAYS THE SAME.** Your files are untouched.
+-   **The Result:** It looks exactly like you just ran `git add` but haven't run `git commit` yet.
+-   **Technical Use:** "I want to add or remove files from the commit or fix the commit message. I don't want to lose my code."
+
+### Option 2: `git reset --hard HEAD~1`
+
+**"Scorched Earth."**
+
+-   **HEAD:** Moves back to `Commit A`.
+-   **Index (Staging):** **RESET.** It is forced to match `Commit A`.
+-   **Work Dir:** **RESET.** It is forced to match `Commit A`.
+-   **The Result:** The changes from `Commit B` are **deleted from your disk.** They are gone.
+-   **Technical Use:** "I completely broke everything. Please destroy all my recent work and reset my computer to how it looked yesterday."
+
+::: {.callout-tip collapse="false"}
+## comparison.tbl — The Cheat Sheet
+
+| Command                       | HEAD moves? | Staging Index? | Working Files? |
+|:------------------------------|:------------|:---------------|:---------------|
+| `git reset --soft`            | ✅ Yes      | Kept           | Kept           |
+| `git reset --mixed` (Default) | ✅ Yes      | Unstaged       | Kept           |
+| `git reset --hard`            | ✅ Yes      | **Destroyed**  | **Destroyed**  |
+:::
 
 ## Part 4: Merge vs. Rebase
 
@@ -259,129 +351,4 @@ Moves your feature branch's base to the tip of the target branch (e.g., main), r
 ## rebase.txt — The Golden Rule of Rebase
 
 Don't rebase a public branch. If other people are working on your branch, and you rebase it, you break their history. Only rebase code that exists solely on your machine.
-:::
-
-------------------------------------------------------------------------
-
-## Part 5: CI/CD (The Robots)
-
-::: {.callout-note collapse="false"}
-## automation.scr — What is CI/CD?
-
--   **CI/CD** stands for **Continuous Integration / Continuous Deployment**.
--   It is a fancy way of saying: **"Scripts that run automatically when you push code."**
-
-### **CI (Continuous Integration)**
-
--   **The Goal:** "Does it break?"
--   **The Action:** Every time you push, a robot downloads your code, installs dependencies, and runs your tests.
--   **The Result:** If it fails, the robot screams (Red X), and you are *not allowed* to merge.
-
-### **CD (Continuous Deployment)**
-
--   **The Goal:** "Ship it!"
--   **The Action:** If the tests pass (Green Check), the robot automatically uploads the code to the Cloud (Firebase, AWS).
--   **The Result:** You commit code, and 2 minutes later, the website is updated.
-:::
-
-------------------------------------------------------------------------
-
-## Part 6: GitHub Actions
-
-::: {.callout-important collapse="false"}
-## workflow.yaml — Defining the Robot
-
-GitHub Actions is configured using **YAML** files inside `.github/workflows/`. It has three main concepts:
-
-1.  **Event (The Trigger):** "When should I wake up?"
-    -   `on: push`
-    -   `on: pull_request`
-2.  **Job (The Task):** "What machine do I need?"
-    -   `runs-on: ubuntu-latest` (Give me a fresh Linux VM).
-    -   `runs-on: windows-latest`
-3.  **Steps (The Recipe):** "What commands do I run?"
-    -   "Checkout code"
-    -   "Install Node.js"
-    -   "Run tests"
-:::
-
-### Realistic Examples
-
-::: {.callout-note collapse="false"}
-## example_1_gatekeeper.yaml — The "Did I Break It?" Workflow
-
-This workflow runs on every Pull Request. If the tests fail, GitHub blocks the merge.
-
-``` yaml
-name: CI Gatekeeper
-on: [pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Install Dependencies
-        run: npm ci
-      - name: Run Tests
-        run: npm test
-```
-:::
-
-::: {.callout-tip collapse="false"}
-## example_2_shipper.yaml — The "Deploy to Firebase" Workflow
-
-This only runs when we merge into `main`. It automatically deploys the app. *(Note: This requires a Secret Token stored in GitHub settings)*
-
-``` yaml
-name: Deploy to Production
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build App
-        run: |
-          npm ci
-          npm run build
-      - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
-          channelId: live
-          projectId: my-cloud-course-project
-```
-:::
-
-------------------------------------------------------------------------
-
-## Interactive Activity
-
-::: {.callout-tip collapse="false"}
-## lab_preview.exe — Your turn
-
-In the next lab, you will: 1. Intentionally write a "broken" test case. 2. Push it to GitHub. 3. Watch the "Actions" tab turn **Red** (The Robot catches you). 4. Fix the code. 5. Watch it turn **Green** and automatically deploy your site.
-:::
-
-------------------------------------------------------------------------
-
-## Summary
-
-::: {.callout-note collapse="false"}
-## shutdown.exe — Key Takeaways
-
--   **Commits** are save points; **Remotes** are backups.
--   **Git** is the engine; **GitHub** is the host.
--   **Merge** preserves history; **Rebase** cleans it.
--   **HEAD** is your current location.
--   **CI/CD** robots ensure you never break production.
 :::
