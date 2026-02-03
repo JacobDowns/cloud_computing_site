@@ -1,0 +1,331 @@
+---
+title: "Lab 3 — The Open Source Simulation"
+subtitle: "Forks, Pull Requests, and The Triangle of Power"
+---
+
+# Part 0: The Concepts (Read This First)
+
+Before we touch the terminal, we need to understand the geometry of working in a team. When you contribute to an open source project (or this class repository), you'll need to deal with moving data between three different locations.
+
+### 1. The Topology (Where is my code?)
+
+::: callout-note
+## topology.map — The Triangle of Power
+
+When you "fork" a repository, you create a detached copy under your own account. Git needs to know how to talk to both your copy and the original repo.
+
+-   **Local:** The files on your actual laptop.
+-   **Origin:** Your copy on GitHub `github.com/your-name/partially_cloudy`
+    -   You have read/write access here.
+-   **Upstream:** The original class repo `github.com/Cloud-Course-Spring-2026/partially_cloudy`
+    -   You usually only have read access here.
+:::
+
+### 2. The Golden Rule of Data Flow
+
+::: callout-note
+## flow_control.exe — The Cycle
+
+Data flows in a specific direction.
+
+1.  **Pull from Upstream:** Get the latest changes to the class repo on your laptop.
+2.  **Push to Origin:** Send your new work up to your fork.
+3.  **Pull Request:** Ask the class repo owner to accept changes from your fork into their repo.
+:::
+
+### 3. The "Clean Main" Policy
+
+::: {.callout-note}
+## branch_rules.err — Never work on Main
+
+In a Fork, your `main` branch has one job:  **Mirror the Upstream Main.**
+
+* Never commit directly to `main`.
+* Always create a "Feature Branch" (e.g., `feature-name`) for your work.
+* If you dirty your `main` branch, syncing becomes painful.
+:::
+
+------------------------------------------------------------------------
+
+# Part 1: The Lab Activity
+
+::: callout-note
+## mission_brief.txt — Objective
+
+**Goal:** Add your personal profile to the class contributors folder and resolve a merge conflict. 
+:::
+
+## Step 1: Authentication
+
+::: callout-important
+## auth_protocol.exe — Log In
+
+1.  **Open Terminal** (or Git Bash).
+2.  Run: `gh auth login`
+3.  Select these options:
+    -   `GitHub.com`
+    -   `HTTPS`
+    -   `Yes` (Authenticate Git with your GitHub credentials)
+    -   `Login with a web browser`
+4.  Copy the one-time code, paste it into the browser window, and authorize.
+:::
+
+## Step 2: The Fork & Clone
+
+::: callout-note
+## fork.bat — Creating Your Copy
+
+You cannot write to my repo directly. You must create your own copy.
+
+**1. Fork the Repo:** Run this command to fork the class repo to your account and clone it to your machine in one step:
+
+``` bash
+gh repo fork Cloud-Course-Spring-2026/partially_cloudy --clone
+```
+
+**2. Enter the Directory:**
+
+``` bash
+cd partially_cloudy
+```
+
+**3. Verify Your Remotes:** Check that the "triangle" is set up correctly:
+
+``` bash
+git remote -v
+```
+
+*You should see:*
+* `origin` -> Your fork (Read/Write)
+* `upstream` -> My repo (Read Only)
+:::
+
+## Step 3: The Feature Branch
+
+::: callout-warning
+## branch_police.dll — No Touch `main`
+
+Instead of editing / committing to the `main` branch, create a feature branch called `add-user`.
+
+**1. Create and Switch:**
+
+``` bash
+git checkout -b add-user
+```
+:::
+
+## Step 4: The Work
+
+::: callout-tip
+## editor.exe — Create Your Profile
+
+1.  Navigate to the `contributors/` folder.
+2.  Copy the template and insert your first name where shown:
+    -   **Windows:** `copy contributors\template.md contributors\[yourname].md`
+    -   **Mac/Linux:** `cp contributors/template.md contributors/[yourname].md`
+    -   *Example:* `cp contributors/template.md contributors/jacob.md`
+3.  Open your new file.
+4.  Fill in the details:
+    * **Name:** [Name]
+    * **Favorite Number:** [1]
+    * **Second Favorite Number:** [2]
+5.  Save the file.
+:::
+
+## Step 5: The Push
+
+::: callout-note
+## upload.net — Sending it Up
+
+1.  **Check Status:** `git status` (You should see your red file).
+2.  **Stage:** `git add contributors/yourname.md`
+3.  **Commit:** `git commit -m "Add yourname to the list of contributors"`
+4.  **Push:**
+    ```bash
+    git push origin add-user
+    ```
+
+This updates the `add-user` branch of your fork.
+:::
+
+## Step 6: The Pull Request
+
+::: {.callout-important}
+## pr_wizard.exe — Opening the Request
+
+You can do this in the browser, but we'll try the command line. 
+
+Run this command:
+```bash
+gh pr create
+```
+
+**Follow the prompts carefully:**
+
+1.  **"Where should we push the '...' branch?"**
+    * Select: **your-username/partially_cloudy** (Your Fork).
+    * *Reason:* You must upload your code to your own fork before you can submit it to the main repo. 
+
+2.  **"Which repository should be the base?"** (Crucial Step!)
+    * Select: **Cloud-Course-Spring-2026/partially_cloudy**
+    * *Reason:* This tells GitHub to send your changes to the Class registry.
+
+3.  **"Title" / "Body"**
+    * Enter "Add [Name]" and a short description.
+
+4.  **"Submit?"**
+    * Select **Submit**.
+
+*Success!* The terminal will print a URL. **Control+Click** that link to see your PR live on the main repo.
+:::
+
+## Step 7: The Peer Review
+
+::: callout-note
+## code_review.log — The Human Firewall
+
+Before I merge your code, a peer must verify it.
+
+1.  **Find a Partner:** Turn to your neighbor.
+2.  **Exchange Links:** Send them the URL to your Pull Request.
+3.  **The Review:**
+    -   Open their PR link.
+    -   Click the **"Files changed"** tab.
+    -   Review their markdown file.
+    -   **Leave a Comment:** Click the `+` on a line of code and write something constructive (e.g., *"Nice use of bold text"*).
+    -   **Submit:** Click "Finish your review" -> Select **Comment** -> Submit.
+:::
+
+## Step 8: The Production Merge
+
+::: callout-tip
+## admin_console.exe — Watch the Big Screen
+
+1.  Once your PR has a comment, **raise your hand**.
+2.  I will review the "Queue" on the projector.
+3.  Watch as your PR changes from **Open** (Green) to **Merged** (Purple).
+:::
+
+::: callout-note
+## Intermission.png
+
+Okay, let's pause here to make sure everyone can merge their PR, then we'll move on to the next step.
+
+![Intermission.](images/intermission_3696.webp){fig-align="center"}
+:::
+
+------------------------------------------------------------------------
+
+# Step 9: The Sync 
+
+::: {.callout-note}
+## drift_alert.err
+
+Okay, now everyone should have had a chance to contribute to their profile to the class repo. However, this means that your fork is out of date. To remedy this, you'll need to sync your `main` branch with the upstream repo's. 
+
+**1. Switch to Main:**
+```bash
+git checkout main
+```
+
+**2. Pull from Upstream:**
+Because you never touched `main`, this will be a "Fast-Forward" (No conflicts!). This is the advantage of keeping the main branch clean. You should only ever have to bring it up to date, not deal with merge conflicts. 
+```bash
+git pull upstream main
+```
+*You should see a long list of files arriving.*
+
+**3. Update your Fork (Origin):**
+Right now, only your laptop has the new files. Your GitHub fork is still old.
+```bash
+git push origin main
+```
+:::
+
+At this point your fork's `main` is synced with the upstream `main`.
+
+---
+
+## Step 10: The Conflict (Simulation)
+
+::: {.callout-note}
+## collision.exe — Resolving Merge Conflicts
+
+**The Scenario:**
+You're going to start a new feature branch to edit the `README.md`.
+While you are working, I will *also* edit the `README.md` in the exact same spot.
+You need to merge my changes into your branch without losing your work.
+
+**A. Create a New Feature Branch**
+```bash
+# Make sure you start from your clean main
+git checkout main
+git checkout -b fix-readme
+```
+
+**B. Make an Edit**
+
+1.  Open `README.md` in VS Code.
+2.  Change the line `You can put a message here!` to something else and save your file.
+3.  Commit it:
+
+```bash
+git add README.md
+git commit -m "Changed the readme."
+```
+:::
+
+::: callout-note
+## Intermission.png
+
+Okay, let's pause here to make sure everyone completed these first steps. 
+
+![Intermission.](images/intermission_3696.webp){fig-align="center"}
+:::
+
+::: {.callout-important}
+## collision.exe — Part 2: The Crash
+
+**C. The "Mid-Air" Collision**
+Now, I'm going to add a conflicting change to `upstream/main` by editing the same line of the README. 
+
+1.  **Update your Main:** (Just like Step 9)
+```bash
+git checkout main
+git pull upstream main
+```
+> This works fine because Main is clean!
+
+2.  **Merge Main into your Feature:**
+```bash
+git checkout fix-readme
+git merge main
+```
+
+**D. The Explosion**
+
+- You will see: `CONFLICT (content): Merge conflict in README.md`.
+- Git has panicked. It pauses and waits for you.
+
+**E. The Fix**
+
+1.  Open `README.md` in VS Code.
+2.  It might look something like this:
+```text
+<<<<<<< HEAD
+Student Note: Git is confusing.
+=======
+Professor Note: Welcome to Cloud Computing!
+>>>>>>> main
+```
+3.  **Decide:** Delete the lines you don't want. Remove the `<<<<`, `====`, `>>>>` markers.
+4.  **Save** the file.
+
+**F. Finish the Merge**
+```bash
+git add README.md
+git commit -m "Fixed merge conflict."
+git push origin fix-readme
+```
+*Congratulations! You have successfully resolved a merge conflict while keeping your history clean.*
+:::
