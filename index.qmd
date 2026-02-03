@@ -19,5 +19,5 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 4 — Authentication + Firestore](lecture4/index.qmd)
 - [Lab 2 — Notes App](lab2/index.qmd)
 - [Lecture 5 — Git, GitHub, and GitHub Actions](lecture5/index.qmd)
-- [Lab 3 — Forks, Pull Requests, Conflic Resolution](lab3/index.qmd)
+- [Lab 3 — Forks, Pull Requests, Conflict Resolution](lab3/index.qmd)
 
