@@ -1,0 +1,374 @@
+---
+title: "Lecture 6 — GitHub Actions"
+---
+
+::: {.callout-note collapse="false"}
+## agenda.txt — Today’s plan
+
+Today we stop running commands manually and teach the robots to do it for us.
+
+1.  **The Concept**: CI/CD and the "Robot Butler."
+2.  **The Anatomy**: Workflows, Jobs, Steps, and Runners.
+3.  **The Syntax**: Triggers (`on`) and Actions (`uses`).
+4.  **Lab A**: The "Hello World" (Manual Triggers).
+5.  **Lab B**: The Python Calculator (Automated Testing).
+6.  **Lab C**: Artifacts (Saving the Output).
+:::
+
+## Part 1: The Concepts
+
+::: {.callout-note collapse="false"}
+## system.ini — What is GitHub Actions?
+
+If Git is a time machine for your code, **GitHub Actions** is the task scheduler.
+
+Instead of you manually running tests, checking for style errors, or dragging files to a server, you write a list of instructions (a **Workflow**), and GitHub's servers do the work for you every time you push code.
+:::
+
+::: {.callout-note collapse="false"}
+## robot.png — The Robot Butler
+
+![The robot butler. ](images/butler.jpeg){fig-align="center"}
+:::
+
+### The Hierarchy
+
+::: {.callout-tip collapse="false"}
+## structure.map — The Components
+
+A Workflow is not just a big script. It has a specific hierarchy.
+
+1.  **Workflow (`.yaml`):** The entire file. It defines **WHEN** to run.
+2.  **Jobs:** The "Container" for the work.
+    -   **Crucial Concept:** Jobs run **in parallel** by default.
+    -   If you have a `Test` job and a `Build` job, they start at the same time on different servers.
+    -   Each job runs on a fresh "Runner" (Virtual Machine).
+3.  **Steps:** The linear sequence of commands inside a Job.
+    -   These run **in order** (Step 1, then Step 2).
+    -   They share the same hard drive and memory (because they are on the same Runner).
+4.  **Actions:** Reusable scripts written by others (like importing a library).
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: The Syntax Reference
+
+Workflows live in a special folder: `.github/workflows/`.
+
+::: {.callout-important collapse="false"}
+## triggers.cfg — The "On" Section
+
+The `on:` keyword defines the event that wakes up the robot.
+
+| Trigger | Description | Real World Use Case |
+|:-----------------------|:-----------------------|:-----------------------|
+| `push` | Runs when code is pushed. | Running tests on every commit. |
+| `pull_request` | Runs when a PR is opened/updated. | Blocking bad code from merging into `main`. |
+| `schedule` | Runs on a timer (CRON). | Nightly builds or data scraping. |
+| `workflow_dispatch` | Manual button click. | Deploying to production manually. |
+:::
+
+::: {.callout-note collapse="false"}
+## standard_lib.dll — Common Actions
+
+You don't write everything from scratch. You import "Actions" using the `uses:` keyword.
+
+**1. `actions/checkout@v4`** 
+
+- **The "Open File" Dialog.** 
+- The Virtual Machine starts *empty*. It doesn't have your files. 
+- This action clones your repo so the runner can see your code.
+
+**2. `actions/setup-python@v5`** (or `setup-node`, `setup-java`) 
+
+- **The Installer.** 
+- Installs the language runtime and configures the cache.
+
+**3. `actions/upload-artifact@v4`** 
+
+- **The "Save As" Button.** 
+- Saves files (PDFs, binaries) from the runner to GitHub storage before the VM is destroyed.
+:::
+
+------------------------------------------------------------------------
+
+## Part 3: Example A — "Hello World"
+
+Let's start with the simplest possible workflow to understand the UI.
+
+::: {.callout-tip collapse="false"}
+## manual_trigger.sh — The Code
+
+Create this file: `.github/workflows/01-hello.yaml`
+
+``` yaml
+name: 01 - Manual Sanity Check
+
+# 1. THE TRIGGER: Manual button click only
+on: workflow_dispatch
+
+# 2. THE JOB: Define the computer
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+    
+    # 3. THE STEPS: The list of commands
+    steps:
+      # A simple shell command
+      - name: Print a greeting
+        run: echo "Hello! I am running on a Cloud Server."
+      
+      # A multi-line script
+      - name: Check system info
+        run: |
+          echo "The OS is:"
+          cat /etc/os-release
+```
+:::
+
+**Activity:** 
+
+1. Commit this file. 
+2. Go to the **Actions** tab on GitHub. 
+3. Click "01 - Manual Sanity Check" on the left. 
+4. Click the **Run workflow** button.
+
+------------------------------------------------------------------------
+
+## Part 4: Example B — The Python Calculator (CI)
+
+Now, let's do real work. We will implement **Continuous Integration (CI)**. We want to ensure that **no broken code ever enters the main branch.**
+
+### The Setup
+
+::: {.callout-note collapse="false"}
+## src_code.py — The Calculator
+
+Create `src/calculator.py`:
+
+``` python
+def add(a: int, b: int) -> int:
+    return a + b
+
+def divide(a: int, b: int) -> float:
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return a / b
+```
+:::
+
+::: {.callout-note collapse="false"}
+## test_suite.py — The Guard Rails
+
+Create `tests/test_calc.py` (using `pytest`):
+
+``` python
+import pytest
+from src.calculator import add, divide
+
+def test_addition():
+    assert add(2, 2) == 4
+
+def test_divide_zero():
+    with pytest.raises(ValueError):
+        divide(10, 0)
+```
+:::
+
+### The Workflow
+
+::: {.callout-important collapse="false"}
+## pipeline.yaml — The CI Configuration
+
+Create `.github/workflows/ci.yaml`. Notice how we mix `uses` (pre-made actions) with `run` (custom commands).
+
+``` yaml
+name: Build calc.exe
+
+# Run on pushes to main OR any Pull Request
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-suite:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Get the code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Install Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # 3. Install Libraries
+      - name: Install Dependencies
+        run: |
+          pip install pytest flake8
+
+      # 4. Lint (Check for messy code)
+      - name: Lint with Flake8
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      # 5. Test (Check for broken logic)
+      - name: Run Pytest
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          pytest
+```
+:::
+
+**The Twist:** After you get this working, go into `calculator.py` and change `return a + b` to `return a - b`. Push it. Watch the Action turn **Red**. This is the robot saving you from deploying a bug.
+
+------------------------------------------------------------------------
+
+## Part 5: Example C — Artifacts
+
+::: {.callout-warning collapse="false"}
+## memory_dump.bin — The Vanishing Files
+
+**Important:** When a job finishes, the Runner (VM) is **destroyed**. Any file you created (PDFs, compiled apps, logs) is deleted instantly.
+
+To keep files, you must explicitly **Upload** them as "Artifacts."
+:::
+
+::: {.callout-tip collapse="false"}
+## release.yaml — Saving Output
+
+``` yaml
+name: 03 - Report Generator
+
+on: push
+
+jobs:
+  build-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      # This step creates a file
+      - name: Generate Data File
+        run: |
+          mkdir output
+          echo "System Report $(date)" > output/report.txt
+          
+      # This step saves the file to GitHub
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report
+          path: output/
+```
+:::
+
+**The Result:** Go to the **Summary** page of your workflow run. Scroll to the bottom. You will see a zip file named `daily-report` available for download.
+
+::: {.callout-note collapse="false"}
+## billing.log — Is it free?
+
+GitHub Actions is **free for public repositories**. You can run as many workflows as you want on open-source projects.
+
+**For Private Repositories (The "Free Tier"):**
+
+* **2,000 Minutes/Month:** You get ~33 hours of compute time per month for free.
+* **Multipliers:** Not all minutes are created equal.
+    * **Linux:** 1x multiplier (1 minute = 1 minute).
+    * **Windows:** 2x multiplier (1 minute = 2 minutes deducted).
+    * **macOS:** 10x multiplier (1 minute = 10 minutes deducted).
+
+*Pro Tip: Don't run your tests on macOS unless you are specifically building an iPhone app.*
+:::
+
+::: {.callout-warning collapse="false"}
+## system_limits.cfg — The Constraints
+
+Even robots have limits. Here are the hard stops to be aware of:
+
+1.  **Timeout:** A single job cannot run for more than **6 hours**. If your simulation takes 2 days, Actions will kill it.
+2.  **Concurrency:** On the free plan, you can generally run **20 jobs** at the same time. If you trigger 50 jobs, 30 will sit in a "Queued" state waiting for a slot.
+3.  **Disk Space:** The runner has about **14 GB** of available SSD space. If your Docker image or dataset is 50GB, the runner will crash.
+:::
+
+::: {.callout-tip collapse="false"}
+## competitors.csv — The Alternatives
+
+GitHub Actions is the modern standard, but it is not the only player in town.
+
+| Tool | The Vibe | Pros | Cons |
+|:---|:---|:---|:---|
+| **Jenkins** | The "Old Reliable" (Windows 98) | Totally free, infinitely customizable, runs locally. | You have to host/patch the server yourself. It looks ugly. |
+| **GitLab CI** | The "Integrated Rival" | extremely powerful, excellent Docker integration. | Tightly coupled to GitLab (hard to use with GitHub). |
+| **CircleCI** | The "Specialist" | Very fast, specialized features for enterprise. | Expensive. Yet another account to manage. |
+| **Azure DevOps** | The "Enterprise" | Deep integration with Microsoft tools. | heavy and complex UI. |
+
+**Why we use GitHub Actions:** It is built *into* the place where your code lives. The friction is zero.
+:::
+
+## Part 7: The Control Room (UI & Debugging)
+
+::: {.callout-note collapse="false"}
+## taskmgr.exe — Managing the Robots
+
+All interaction happens in the **Actions** tab of your repository.
+
+**The Dashboard:**
+-   **Left Sidebar:** Shows all your workflow files. Click one to filter the history.
+
+-   **The Status Icons:**
+    -   ✅ **Green Check:** Success.
+    -   ❌ **Red X:** Failure (The robot crashed).
+    -   🟡 **Yellow Circle:** Running or Waiting.
+    -   ⚪ **Grey:** Skipped or Cancelled.
+
+**Emergency Stop:**
+
+If you accidentally trigger a build that is going to take 5 hours, open the specific run and click **"Cancel Workflow"** in the top right. Don't waste your free minutes!
+:::
+
+
+
+::: {.callout-important collapse="false"}
+## debug.log — How to fix a broken build
+
+Debugging Actions is harder than debugging local code because you can't just "pause" the server. Here is the hierarchy of troubleshooting:
+
+**Level 1: Read the Console**
+
+-   Click the **Red X** job.
+-   Click the specific **Step** that failed.
+-   The logs will expand. **Scroll up.** The error is usually 10 lines *above* where you think it is.
+
+**Level 2: Print Debugging ("Echo is your friend")**
+
+-   Since you can't see the screen, you must make the computer talk to you.
+-   Add steps to inspect the environment:
+```yaml
+- name: Debug Environment
+  run: |
+    echo "Where am I?"
+    pwd
+    echo "What files are here?"
+    ls -R
+    echo "What python is this?"
+    which python
+```
+
+**Level 3: The Secret "Debug Mode"**
+
+-   GitHub has a hidden switch to turn on verbose logging.
+-   Go to **Settings -> Secrets and variables -> Actions**.
+-   Create a New Repository Secret named: `ACTIONS_STEP_DEBUG`.
+-   Set the value to: `true`.
+-   **Re-run the job.** The logs will now show you every single variable and internal command the runner executes.
+
+**Level 4: Local Simulation (Advanced)**
+
+-  Tools like **`act`** allow you to run GitHub Actions locally on your laptop (using Docker) so you don't have to push-and-pray 50 times to fix a typo.
+:::
