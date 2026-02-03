@@ -15,10 +15,12 @@ Before we touch the terminal, we need to understand the geometry of working in a
 When you "fork" a repository, you create a detached copy under your own account. Git needs to know how to talk to both your copy and the original repo.
 
 -   **Local:** The files on your actual laptop.
--   **Origin:** Your copy on GitHub `github.com/your-name/partially_cloudy`
+-   **Origin:** Your copy on GitHub 
+    - `github.com/your-name/partially_cloudy`
     -   You have read/write access here.
--   **Upstream:** The original class repo `github.com/Cloud-Course-Spring-2026/partially_cloudy`
-    -   You usually only have read access here.
+-   **Upstream:** The original class repo 
+    - `github.com/Cloud-Course-Spring-2026/partially_cloudy`
+    -  You'll only have read access here
 :::
 
 ### 2. The Golden Rule of Data Flow
@@ -139,11 +141,14 @@ git checkout -b add-user
 
 1.  **Check Status:** `git status` (You should see your red file).
 2.  **Stage:** `git add contributors/yourname.md`
-3.  **Commit:** `git commit -m "Add yourname to the list of contributors"`
+3.  **Commit:** 
+```bash 
+git commit -m "Add yourname to the list of contributors"`
+```
 4.  **Push:**
-    ```bash
-    git push origin add-user
-    ```
+```bash
+git push origin add-user
+```
 
 This updates the `add-user` branch of your fork.
 :::
@@ -201,9 +206,9 @@ Before I merge your code, a peer must verify it.
 ::: callout-tip
 ## admin_console.exe — Watch the Big Screen
 
-1.  Once your PR has a comment, **raise your hand**.
-2.  I will review the "Queue" on the projector.
-3.  Watch as your PR changes from **Open** (Green) to **Merged** (Purple).
+1.  Once your PR has a comment, let me know. 
+2.  I will review the pull request queue on the projector.
+3.  I'll show you what it looks like to merge the pull request. 
 :::
 
 ::: callout-note
@@ -278,7 +283,7 @@ git commit -m "Changed the readme."
 ::: callout-note
 ## Intermission.png
 
-Okay, let's pause here to make sure everyone completed these first steps. 
+Okay, let's pause here to make sure everyone completed these first steps. Don't work on the next step until everyone is at the same stage.  
 
 ![Intermission.](images/intermission_3696.webp){fig-align="center"}
 :::
