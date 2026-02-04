@@ -10,9 +10,9 @@ Today we stop running commands manually and teach the robots to do it for us.
 1.  **The Concept**: CI/CD and the "Robot Butler."
 2.  **The Anatomy**: Workflows, Jobs, Steps, and Runners.
 3.  **The Syntax**: Triggers (`on`) and Actions (`uses`).
-4.  **Lab A**: The "Hello World" (Manual Triggers).
-5.  **Lab B**: The Python Calculator (Automated Testing).
-6.  **Lab C**: Artifacts (Saving the Output).
+4.  **Example A**: The "Hello World" (Manual Triggers).
+5.  **Example B**: The Python Calculator (Automated Testing).
+6.  **Example C**: Artifacts (Saving the Output).
 :::
 
 ## Part 1: The Concepts
@@ -28,7 +28,7 @@ Instead of you manually running tests, checking for style errors, or dragging fi
 ::: {.callout-note collapse="false"}
 ## robot.png — The Robot Butler
 
-![The robot butler. ](images/butler.jpeg){fig-align="center"}
+![The robot butler.](images/butler.jpeg){fig-align="center"}
 :::
 
 ### The Hierarchy
@@ -73,21 +73,21 @@ The `on:` keyword defines the event that wakes up the robot.
 
 You don't write everything from scratch. You import "Actions" using the `uses:` keyword.
 
-**1. `actions/checkout@v4`** 
+**1. `actions/checkout@v4`**
 
-- **The "Open File" Dialog.** 
-- The Virtual Machine starts *empty*. It doesn't have your files. 
-- This action clones your repo so the runner can see your code.
+-   **The "Open File" Dialog.**
+-   The Virtual Machine starts *empty*. It doesn't have your files.
+-   This action clones your repo so the runner can see your code.
 
-**2. `actions/setup-python@v5`** (or `setup-node`, `setup-java`) 
+**2. `actions/setup-python@v5`** (or `setup-node`, `setup-java`)
 
-- **The Installer.** 
-- Installs the language runtime and configures the cache.
+-   **The Installer.**
+-   Installs the language runtime and configures the cache.
 
-**3. `actions/upload-artifact@v4`** 
+**3. `actions/upload-artifact@v4`**
 
-- **The "Save As" Button.** 
-- Saves files (PDFs, binaries) from the runner to GitHub storage before the VM is destroyed.
+-   **The "Save As" Button.**
+-   Saves files (PDFs, binaries) from the runner to GitHub storage before the VM is destroyed.
 :::
 
 ------------------------------------------------------------------------
@@ -126,25 +126,39 @@ jobs:
 ```
 :::
 
-**Activity:** 
+**Activity:**
 
-1. Commit this file. 
-2. Go to the **Actions** tab on GitHub. 
-3. Click "01 - Manual Sanity Check" on the left. 
-4. Click the **Run workflow** button.
+1.  Commit this file.
+2.  Go to the **Actions** tab on GitHub.
+3.  Click "01 - Manual Sanity Check" on the left.
+4.  Click the **Run workflow** button.
 
 ------------------------------------------------------------------------
 
 ## Part 4: Example B — The Python Calculator (CI)
 
-Now, let's do real work. We will implement **Continuous Integration (CI)**. We want to ensure that **no broken code ever enters the main branch.**
+Let's imitate a realistic workflow using **Continuous Integration (CI)**. We want to ensure that broken or unsafe code never reaches the main branch by imlpementing automatic testing and linting. 
 
-### The Setup
+### Step 1: The Setup (The Configuration)
+
+We are going to use a modern Python project structure.
+
+**The Directory Structure:**
+
+``` text
+my-repo/
+├── src/
+│   └── calculator.py
+├── tests/
+│   └── test_calc.py
+├── pyproject.toml      <-- pytest config
+└── .flake8             <-- Linter config
+```
 
 ::: {.callout-note collapse="false"}
 ## src_code.py — The Calculator
 
-Create `src/calculator.py`:
+Create `src/calculator.py`.
 
 ``` python
 def add(a: int, b: int) -> int:
@@ -160,7 +174,7 @@ def divide(a: int, b: int) -> float:
 ::: {.callout-note collapse="false"}
 ## test_suite.py — The Guard Rails
 
-Create `tests/test_calc.py` (using `pytest`):
+Create `tests/test_calc.py`:
 
 ``` python
 import pytest
@@ -175,29 +189,121 @@ def test_divide_zero():
 ```
 :::
 
-### The Workflow
+::: {.callout-important collapse="false"}
+## config_files.ini — The Rules
+
+**1. Create `pyproject.toml` 
+- This includes Python version information and dependencies for uv. 
+- It also fixes the import errors for pytest by adding the current folder to the path.
+
+``` toml
+[project]
+name = "calculator"
+version = "0.1.0"
+description = "A simple calculator for CI demo"
+requires-python = ">=3.12"
+dependencies = [
+    "pytest",
+    "flake8"
+]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["tests"]
+```
+
+**2. Create `.flake8` for the Linter**
+
+- By default, linters are annoying. 
+- They yell about missing spaces.
+- We are going to configure this to only check for actual code errors (logic), ignoring all formatting/style complaints.
+
+``` ini
+[flake8]
+# Exclude the virtual environment (so we don't check library files)
+exclude = .venv, .git, __pycache__, build, dist
+
+# The "Chill" Configuration:
+# We only select code "E9" (Syntax Errors) and "F" (Logic Errors)
+# We ignore "W" (Warnings) and standard "E" (Style Errors)
+select = E9,F
+```
+:::
+
+------------------------------------------------------------------------
+
+### Step 2: Running Locally (The "Works on My Machine" Check)
+
+::: {.callout-tip collapse="false"}
+## uv.exe — Gotta Go Fast
+
+I recommend using **`uv`** for Python package management in this class.
+
+-   **What is it?** A modern replacement for `pip` and `venv` written in Rust.
+-   **Why?** It is 10-100x faster than standard pip.
+
+![Sonic the Hedgehog](images/sonic.webp){fig-align="center"}
+:::
+
+**Option A: Using `uv` (Recommended)**
+
+``` bash
+# 1. Run tests (uv creates the venv and installs pytest automatically!)
+uv run pytest
+
+# 2. Run linter
+uv run flake8 .
+```
+
+**Option B: Using Standard `pip`**
+
+``` bash
+# 1. Install packages
+pip install pytest flake8
+
+# 2. Run tests
+pytest
+
+# 3. Run linter
+flake8 .
+```
+
+------------------------------------------------------------------------
+
+### Step 3: The GitHub Actions Workflow
+
+Now that it works locally, let's automate it!
 
 ::: {.callout-important collapse="false"}
 ## pipeline.yaml — The CI Configuration
 
-Create `.github/workflows/ci.yaml`. Notice how we mix `uses` (pre-made actions) with `run` (custom commands).
+Create `.github/workflows/ci.yaml`.
 
 ``` yaml
 name: Build calc.exe
 
-# Run on pushes to main OR any Pull Request
 on:
+  # Trigger 1: Feedback Loop
+  # Run immediately when I push to 'dev' (so I know if I broke it)
   push:
-    branches: [ "main" ]
+    branches:
+      - dev
+      # It is also good practice to include 'main' here so you have 
+      # a record of successful builds on your production branch.
+      - main 
+
+  # Trigger 2: The Gatekeeper
+  # Run when someone tries to merge INTO 'main'
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   test-suite:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Get the code
+      # 1. Check out the code
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -205,26 +311,56 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
-      # 3. Install Libraries
+      # 3. Install Dependencies
       - name: Install Dependencies
         run: |
           pip install pytest flake8
 
-      # 4. Lint (Check for messy code)
+      # 4. Lint
+      # It will read your .flake8 file automatically!
       - name: Lint with Flake8
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: flake8 . --count --show-source --statistics
 
-      # 5. Test (Check for broken logic)
+      # 5. Test
+      # It will read your pyproject.toml file automatically!
       - name: Run Pytest
-        run: |
-          export PYTHONPATH=$PYTHONPATH:.
-          pytest
+        run: pytest
 ```
 :::
 
-**The Twist:** After you get this working, go into `calculator.py` and change `return a + b` to `return a - b`. Push it. Watch the Action turn **Red**. This is the robot saving you from deploying a bug.
+With this workflow in place, when we push to `dev` branch or do a pull request to merge with `main`, this workflow will trigger. The workflow checks for linting errors and performs automatic testing.
+
+### Deep Dive: The "Red-Green" Workflow
+
+
+You might wonder: *"Does the robot read the text 'FAILED' on the screen?"* No, they're actually looking at exit codes. Every command in Linux returns a hidden **Exit Code**:
+
+-   **`0`** = Success (Green light).
+-   **`1`** (or higher) = Failure (Red light).
+
+**The Chain Reaction:**
+
+1.  `pytest` finds a bug and returns `1`.
+2.  GitHub Actions sees the `1` and kills the job.
+3.  GitHub marks the Commit as "Failed" (❌).
+
+::: {.callout-tip collapse="false"}
+## fix_loop.gif — What do I do when it fails?
+
+This is the most common workflow in professional software:
+
+1.  **The Push:** You push to `feature-branch`. The Action turns **Red**.
+2.  **The Block:** You go to the Pull Request. The "Merge" button is disabled.
+3.  **The Fix:** **Do not close the PR.**
+    -   Go back to your local VS Code.
+    -   Fix the bug.
+    -   Run `uv run pytest` to prove it works.
+    -   Commit and Push to the *same branch*.
+4.  **The Retry:** GitHub automatically detects the new commit, cancels the old run, and starts a fresh test.
+5.  **The Green Light:** The tests pass. The Merge button unlocks.
+:::
 
 ------------------------------------------------------------------------
 
@@ -235,8 +371,39 @@ jobs:
 
 **Important:** When a job finishes, the Runner (VM) is **destroyed**. Any file you created (PDFs, compiled apps, logs) is deleted instantly.
 
-To keep files, you must explicitly **Upload** them as "Artifacts."
+To keep files, you  can explicitly upload them as "artifacts."
 :::
+
+### Deep Dive: Why do we need Artifacts?
+
+You might ask: *"Why can't I just look at the file on the server?"*
+
+> **The Problem:** GitHub Runners are temporary.
+
+1.  GitHub spins up a fresh computer for your job.
+2.  It runs your script.
+3.  It destroys the computer the millisecond the job finishes.
+If your script generates a PDF, a compiled `.exe`, or a graph, that file is deleted along with the computer.
+
+>**The Solution:** Artifacts.
+
+An Artifact is a mechanism to teleport a file off the dying runner and into GitHub's permanent cloud storage so you can download it later.
+
+
+
+### Common Use Cases
+
+| Scenario | The Artifact | Why you need it |
+| :--- | :--- | :--- |
+| **The Compiler** | `calculator.exe` | You want to send the app to a friend without them installing Python. |
+| **The Data Scientist** | `model.pkl` / `graph.png` | Your script trains a model or visualizes data. You need the result, not the logs. |
+| **The Web Developer** | `screenshot.png` | Your UI tests failed. You need to see the screenshot of the browser to know *why* it clicked the wrong button. |
+| **The Pipeline** | `clean_data.csv` | **Job A** downloads raw data. **Job B** analyzes it. Artifacts are how Job A passes the baton to Job B. |
+
+
+### Example 
+
+Let's show an example of generating an artifact. 
 
 ::: {.callout-tip collapse="false"}
 ## release.yaml — Saving Output
@@ -268,7 +435,13 @@ jobs:
 ```
 :::
 
-**The Result:** Go to the **Summary** page of your workflow run. Scroll to the bottom. You will see a zip file named `daily-report` available for download.
+**The Result:** 
+
+- Go to the **Summary** page of your workflow run. Scroll to the bottom. 
+- You will see a zip file named `daily-report` available for download.
+
+
+## Part 6: Practical Considerations 
 
 ::: {.callout-note collapse="false"}
 ## billing.log — Is it free?
@@ -276,12 +449,14 @@ jobs:
 GitHub Actions is **free for public repositories**. You can run as many workflows as you want on open-source projects.
 
 **For Private Repositories (The "Free Tier"):**
+Currently, the free tier looks like this:
 
-* **2,000 Minutes/Month:** You get ~33 hours of compute time per month for free.
-* **Multipliers:** Not all minutes are created equal.
-    * **Linux:** 1x multiplier (1 minute = 1 minute).
-    * **Windows:** 2x multiplier (1 minute = 2 minutes deducted).
-    * **macOS:** 10x multiplier (1 minute = 10 minutes deducted).
+-  **2,000 Minutes/Month:** You get \~33 hours of compute time per month for free.
+- You get **500MB** of artifact storage. 
+-  **Multipliers:** Not all minutes are created equal.
+    -   **Linux:** 1x multiplier (1 minute = 1 minute).
+    -   **Windows:** 2x multiplier (1 minute = 2 minutes deducted).
+    -   **macOS:** 10x multiplier (1 minute = 10 minutes deducted).
 
 *Pro Tip: Don't run your tests on macOS unless you are specifically building an iPhone app.*
 :::
@@ -302,7 +477,7 @@ Even robots have limits. Here are the hard stops to be aware of:
 GitHub Actions is the modern standard, but it is not the only player in town.
 
 | Tool | The Vibe | Pros | Cons |
-|:---|:---|:---|:---|
+|:-----------------|:-----------------|:-----------------|:-----------------|
 | **Jenkins** | The "Old Reliable" (Windows 98) | Totally free, infinitely customizable, runs locally. | You have to host/patch the server yourself. It looks ugly. |
 | **GitLab CI** | The "Integrated Rival" | extremely powerful, excellent Docker integration. | Tightly coupled to GitLab (hard to use with GitHub). |
 | **CircleCI** | The "Specialist" | Very fast, specialized features for enterprise. | Expensive. Yet another account to manage. |
@@ -318,8 +493,7 @@ GitHub Actions is the modern standard, but it is not the only player in town.
 
 All interaction happens in the **Actions** tab of your repository.
 
-**The Dashboard:**
--   **Left Sidebar:** Shows all your workflow files. Click one to filter the history.
+**The Dashboard:** - **Left Sidebar:** Shows all your workflow files. Click one to filter the history.
 
 -   **The Status Icons:**
     -   ✅ **Green Check:** Success.
@@ -331,8 +505,6 @@ All interaction happens in the **Actions** tab of your repository.
 
 If you accidentally trigger a build that is going to take 5 hours, open the specific run and click **"Cancel Workflow"** in the top right. Don't waste your free minutes!
 :::
-
-
 
 ::: {.callout-important collapse="false"}
 ## debug.log — How to fix a broken build
@@ -349,7 +521,8 @@ Debugging Actions is harder than debugging local code because you can't just "pa
 
 -   Since you can't see the screen, you must make the computer talk to you.
 -   Add steps to inspect the environment:
-```yaml
+
+``` yaml
 - name: Debug Environment
   run: |
     echo "Where am I?"
@@ -363,12 +536,12 @@ Debugging Actions is harder than debugging local code because you can't just "pa
 **Level 3: The Secret "Debug Mode"**
 
 -   GitHub has a hidden switch to turn on verbose logging.
--   Go to **Settings -> Secrets and variables -> Actions**.
+-   Go to **Settings -\> Secrets and variables -\> Actions**.
 -   Create a New Repository Secret named: `ACTIONS_STEP_DEBUG`.
 -   Set the value to: `true`.
 -   **Re-run the job.** The logs will now show you every single variable and internal command the runner executes.
 
 **Level 4: Local Simulation (Advanced)**
 
--  Tools like **`act`** allow you to run GitHub Actions locally on your laptop (using Docker) so you don't have to push-and-pray 50 times to fix a typo.
+-   Tools like **`act`** allow you to run GitHub Actions locally on your laptop (using Docker) so you don't have to push-and-pray 50 times to fix a typo.
 :::
