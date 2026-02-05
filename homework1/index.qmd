@@ -1,0 +1,212 @@
+---
+title: "Homework 1 — The Gatekeeper"
+---
+
+# A:\\HOMEWORK.EXE
+
+**Volume Label:** THE_GATEKEEPER <br/> **System Date:** FEB-05-2026 <br/> **Subject:** AUTOMATED QUALITY CONTROL PROTOCOLS
+
+------------------------------------------------------------------------
+
+::: {.callout-important icon="false"}
+## MISSION_BRIEF.TXT
+
+**\< SYSTEM MESSAGE \>** Welcome to **WeatherPy Inc.**.
+
+Our previous lead architect, Carl, has been terminated due to lack of participation in company team building exercises. As you know, participation and happiness are both mandatory at WeatherPy Inc, and strictly enforced at all times. Carl fled the building leaving behind a critical Python script on the mainframe.
+
+-   **STATUS:** CRITICAL.
+-   **ERROR:** LOGIC_FAILURE.
+-   **TESTS:** FAILING.
+
+**YOUR DIRECTIVE:**
+
+1.  **Initialize Automation:** Setup a GitHub repository and setup a GitHub actions workflow to automatically run tests and check for linting errors. 
+2.  **Debug the Mainframe:** Fix Carl's broken logic.
+3.  **System Upgrade:** Install one (1) new custom feature of your choice. 
+4.  **Security Lockdown:** Prevent unauthorized writes to the `main` branch
+:::
+
+::: {.callout-important icon="false"}
+![Remember, happiness is mandatory at WeatherPy Inc!](images/mandatory.png){fig-align="center" width="502"}
+:::
+
+------------------------------------------------------------------------
+
+## PART 1: INITIALIZE_REPOSITORY
+
+1.  Boot up **GitHub.com**.
+2.  Initialize a **New Public Repository**
+3.  Clone the directory to your local hard drive.
+4.  Copy the following legacy data exactly (including the bugs).
+
+::: {.callout-note icon="false"}
+## src/main.py
+
+``` python
+
+# Convert from Celcius to Far
+def conversion(value):
+    # MEMO FROM CARL: I think 100C is 200F. Math is hard.
+    # (Correct formula: value * 9/5 + 32)
+    return value * 2 + 30
+
+# Is the average > 50?
+def is_strong(values):
+    # BUG ALERT: This returns True if ANY value is > 50.
+    # Management wants to know if the AVERAGE is > 50.
+    for v in values:
+        if v > 50:
+            return True
+    return False
+```
+:::
+
+::: {.callout-note icon="false"}
+## tests/test_main.py
+
+``` python
+import pytest
+from src.main import conversion, is_strong
+
+def test_conversion():
+    # 100C should be 212F
+    assert conversion(100) == 212
+    # 0C should be 32F
+    assert conversion(0) == 32
+
+def test_logic():
+    # Average of [40, 40, 60] is 46.6 (Should be False)
+    # Carl's code returns True because 60 > 50.
+    data = [40, 40, 60]
+    assert is_strong(data) is False
+```
+:::
+
+Don't forget to configure your `pyproject.toml` and `.flake8` drivers. Initially, your repository should have a structure like this:
+
+
+```text
+├── src/
+│   └── main.py              <-- The Source Code (Buggy)
+│
+├── tests/
+│   └── test_main.py         <-- The Test Suite 
+│
+├── .flake8                  <-- The Linter Config
+├── pyproject.toml           <-- The Project Config
+```
+
+------------------------------------------------------------------------
+
+## PART 2: THE_PIPELINE.YAML (10 PTS)
+
+Construct an automated workflow file at `.github/workflows/ci.yaml`.
+
+::: {.callout-tip icon="false"}
+## SYSTEM_REQUIREMENTS.DOC
+
+1.  **TRIGGERS:** System must activate on `push` and `pull_request` events.
+2.  **SEQUENCE:**
+    -   `[ LOAD ]` Checkout Code
+    -   `[ INSTALL ]` Python Dependencies
+    -   `[ SCAN ]` Lint with Flake8 (Logic Errors Only)
+    -   `[ TEST ]` Run Pytest
+3.  **THE "MYSTERY_BOX" ARTIFACT:**
+    -   Generate an artifact file of your choice. 
+:::
+
+- Test out your pipeline. The buggy code should fail the automatic testing!
+- Your directory should now look like this: 
+
+```text
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yaml          <-- The workflow (run tests, run linter, create artifact)
+│
+├── src/
+│   └── main.py              <-- The Source Code (Still buggy)
+│
+├── tests/
+│   └── test_main.py         <-- The Test Suite (Tests will fail)
+│
+├── .flake8                  <-- The Linter Config
+├── pyproject.toml           <-- The Project Config
+```
+
+------------------------------------------------------------------------
+
+## PART 3: SYSTEM_REPAIR & UPGRADE (10 PTS)
+
+**\< ALERT \>** The pipeline is currently displaying **RED** lights. This is expected. 
+
+- Since the code is buggy, you'll need to go back and fix it. 
+
+1.  **DEBUG MODE:** Analyze the failure logs on the GitHub Dashboard.
+2.  **PATCH:** Edit `src/main.py`. Fix the math in `conversion` and the average logic in `is_strong`.
+3.  **FEATURE EXPANSION**
+    -   You must code **one new function** in `src/main.py`.
+    -   You must write **one new test** for it in `tests/test_main.py`.
+    -   **Requirement:** The test must pass (GREEN).
+
+------------------------------------------------------------------------
+
+## PART 4: SECURITY_PROTOCOL (10 PTS)
+
+::: {.callout-warning icon="false"}
+## ACCESS_DENIED.BMP
+
+The junior developers do not yet fully embody company values. We cannot allow them to access the production environment. 
+
+1.  Navigate to **Settings** \> **Branches**.
+2.  Enable **Branch Protection** on `main`.
+3.  Check the box: `[x] Require status checks to pass before merging`.
+4.  **PROOF OF COMPLIANCE:**
+    -   Create a branch `break-it`.
+    -   Delete a colon `:` in the Python file (Syntax Error).
+    -   Open a Pull Request.
+    -   **CAPTURE SCREENSHOT:** Show the "Merge" button is **GRAYED OUT**.
+    - Save image as `access_denied.png`.
+    - Be sure to add this image to your repo and push it. 
+:::
+
+------------------------------------------------------------------------
+
+## PART 5: CERTIFICATION (10 PTS)
+
+Once your system is fully operational with tests passing, display your certification.
+
+1.  Go to the **Actions** tab.
+2.  Select your Workflow.
+3.  Click `...` \> **Create status badge**.
+4.  Copy the Markdown.
+5.  Paste it at the top of `README.md`.
+
+**FINAL OUTPUT:** Your repository should display a `[ passing ]` badge. 
+
+------------------------------------------------------------------------
+
+::: {.callout-important icon="false"}
+## SUBMISSION_PROTOCOL.EXE
+
+**< STATUS: PENDING >**
+
+To submit your assignment, provide the link to your repository on Canvas. 
+:::
+
+# GRADING_RUBRIC.LOG
+
+**Target:** `HOMEWORK_01` <br/> **Max Value:** 40 PTS <br/> **Audit Protocol:** STANDARD
+
+
+
+------------------------------------------------------------------------
+
+| **SYSTEM MODULE** | **AUDIT CRITERIA** | **PTS** |
+| :--- | :--- | :--- |
+| **1. THE PIPELINE** | **Workflow Configuration (`.github/workflows/ci.yaml`)**<br>• Triggers defined correctly (`push` AND `pull_request`). (3 pts)<br>• Steps included: Checkout, Install, Lint (Flake8), Test (Pytest). (4 pts)<br>• **Artifact Generation:** The workflow successfully generates and uploads the Mystery Box artifact. (3 pts) | **10** |
+| **2. SYSTEM REPAIR** | **Bug Fixes & Feature Expansion (`src` & `tests`)**<br>• **Math Fix:** `conversion` function correctly calculates F = C * 9/5 + 32. (2.5 pts)<br>• **Logic Fix:** `is_strong` correctly calculates the *average* of the list, not just `any`. (2.5 pts)<br>• **Upgrade:** A new custom function exists in `src/main.py`. (2 pts)<br>• **Verification:** A corresponding test exists in `tests/test_main.py` and passes. (3 pts) | **10** |
+| **3. SECURITY** | **Proof of Compliance (`access_denied.png`)**<br>• Image file exists in the repository.<br>• Screenshot clearly shows a GitHub Pull Request where the **"Merge pull request"** button is disabled/grayed out due to failing checks.<br>*(If image is missing or does not show blocked merge: 0 pts)* | **10** |
+| **4. CERTIFICATION** | **Status Documentation (`README.md`)**<br>• The README file contains a GitHub Actions Status Badge.<br>• The badge status is **[ Passing ]** (Green).<br>*(If badge is Red/Failing: 5 pts. If missing: 0 pts)* | **10** |
+| **TOTAL** | **SYSTEM INTEGRITY SCORE** | **40** |

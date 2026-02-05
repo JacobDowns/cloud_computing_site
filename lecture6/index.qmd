@@ -192,7 +192,8 @@ def test_divide_zero():
 ::: {.callout-important collapse="false"}
 ## config_files.ini — The Rules
 
-**1. Create `pyproject.toml` 
+**1. Create `pyproject.toml`**
+ 
 - This includes Python version information and dependencies for uv. 
 - It also fixes the import errors for pytest by adding the current folder to the path.
 
