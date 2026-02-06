@@ -1,0 +1,515 @@
+---
+title: "Lecture 7 — Containers & Docker"
+---
+
+------------------------------------------------------------------------
+
+::: {.callout-note collapse="false"}
+## agenda.txt
+
+1.  **The Problem:** “Works on my machine” (Dependency Hell).
+2.  **The Concept:** Virtual Machines vs. Containers.
+3.  **Deep Dive:** Kernel Nuance (Host vs. Container OS).
+4.  **Vocabulary:** Images, Containers, Registries.
+5.  **Anatomy:** Decoding the `Dockerfile`.
+6.  **Interaction:** Ports, Volumes, and the Shell.
+7.  **Orchestration:** Docker Compose.
+8.  **Real World:** ML & Web App Examples.
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: The Problem
+
+::: {.callout-note icon="false"}
+## mymachine.png
+
+![I swear it worked on my machine.](images/mymachine.jpg){fig-align="center"}
+:::
+
+::: {.callout-important icon="false"}
+## error_log.txt
+
+We have all been there. You send your code to a colleague, and it fails.
+
+**Scenario A: The Version Conflict** <br/> *Dev:* I'm using Python 3.12 and Pandas 2.1. <br/> *Server:* I have Python 3.8 installed for a legacy app. I cannot upgrade. <br/>
+
+> **Result:** `SyntaxError` or missing features.
+
+**Scenario B: The "Hidden" System Library** <br/> *Dev:* I installed `opencv-python` and it works fine. *Cloud:* ImportError: libGL.so.1: cannot open shared object file. <br/>
+
+> **Result:** Your Python packages are there, but the *Linux* libraries (C++ compilers, graphics drivers) are missing.
+
+**Scenario C: The OS Quirk** <br/> *Dev (Windows):* My code reads `data\file.csv`. <br/> *Server (Linux):* "FileNotFoundError." (Linux uses forward slashes `/`). <br/>
+
+> **Result:** Hardcoded paths and line-endings (`CRLF` vs `LF`) break the build.
+
+**The Solution:** We stop shipping just the code. We ship everyting (The OS + System Libs + Python + Code).
+:::
+
+------------------------------------------------------------------------
+
+## PART 2: VM v. Container
+
+To understand Docker, you must understand what it is replacing.
+
+::: {.callout-note icon="false"}
+## virtual_machine.exe (The House)
+
+Think of a Virtual Machine (VM) as a house:
+
+-   It is fully self-contained.
+-   It has its own plumbing, heating, and foundation (A full Guest OS).
+-   **Pros:** Total isolation.
+-   **Cons:** Heavy. Slow to boot. Wastes resources.
+:::
+
+::: {.callout-note icon="false"}
+## containers.exe (The Apartment)
+
+Think of a Container as an apartment:
+
+-   It is self-contained (your own furniture/libraries). - However, it shares the foundation, plumbing, and roof with the building (The Host Kernel).
+-   **Pros:**:
+    -   Lightweight (MBs, not GBs).
+    -   Boots in milliseconds.
+-   **Cons:** Less isolation than a VM.
+
+![A contaiiner v. a VM from: https://www.geeksforgeeks.org/devops/introduction-to-docker/](images/dockervsvm.png){fig-align="center"}
+:::
+
+------------------------------------------------------------------------
+
+## Part 3: Kernels
+
+::: {.callout-note icon="false"}
+## kernel32.dll
+
+**Containers do NOT include a kernel.** They include **user-space** only (files, libraries, runtimes). The kernel is supplied by the host system.
+
+1.  **Linux Hosts:** Containers run directly on the host kernel.
+2.  **macOS/Windows:** Docker Desktop runs a small, hidden Linux VM. Containers run inside that VM.
+
+**Consequences:**
+
+-   `FROM ubuntu` gives you the Ubuntu package manager (`apt`) and file structure, but you are still using your Host's kernel (or the Docker Desktop VM kernel).
+-   You cannot run a Linux kernel call that the host kernel doesn’t support.
+:::
+
+------------------------------------------------------------------------
+
+## Performance Nuance
+
+> Are containers slower if they need a VM?
+
+**Short answer:**\
+- In the cloud: **no, almost never**\
+- On laptops (macOS/Windows): **sometimes, mainly for file I/O** :::
+
+### Why containers are usually fast
+
+::: {.callout-note collapse="false"}
+## amortization.sys — Sharing the cost
+
+In cloud environments:
+
+-   Many containers run on **one Linux host or VM**
+-   The kernel is shared
+-   The cost of the VM is **amortized** across all containers
+
+```         
+Linux host / VM
+├── container A
+├── container B
+├── container C
+└── container D
+```
+
+Containers are just isolated processes — not full machines.
+:::
+
+### Where overhead actually shows up
+
+::: {.callout-warning collapse="false"}
+## io_bottleneck.txt — The real slowdown
+
+The most noticeable performance cost is **I/O**, not CPU:
+
+-   CPU performance is near-native
+-   Memory overhead is small and predictable
+-   **Filesystem I/O** can be slower, especially on laptops
+
+**Why?**
+
+-   On macOS/Windows, Docker runs containers inside a small Linux VM
+-   File access may cross OS boundaries
+-   Many small file reads (e.g. Python imports, `node_modules`) are expensive
+:::
+
+### Why this matters less in the cloud
+
+::: {.callout-note collapse="false"}
+## cloud_perf.exe — Linux all the way down
+
+In cloud platforms:
+
+-   Hosts run Linux
+-   Containers run directly on the Linux kernel
+-   No hidden VM layer is required
+
+As a result:
+
+-   I/O performance is much closer to native
+-   The “Docker feels slow” problem largely disappears
+:::
+
+::: {.callout-note collapse="true"}
+## discussion.exe — Quick questions
+
+1.  Why does container performance improve when running on Linux hosts?
+2.  Why might file-heavy workloads feel slower in Docker on a laptop?
+3.  Why is VM cost amortization important for cloud scalability?
+:::
+
+------------------------------------------------------------------------
+
+## Part 4: Docker Terminology
+
+A list of important terms for understanding Docker:
+
+::: {.callout-tip icon="false"}
+## terminology.doc
+
+| Term | Technical Definition |   |
+|:-----------------------|:-----------------------|:-----------------------|
+| **Dockerfile** A text file with build instructions. |  |  |
+| **Image** An immutable filesystem + metadata. Read-only. |  |  |
+| **Container** | A running instance of an image. |  |
+| **Registry** | Storage for images (Docker Hub, GHCR). |  |
+| **Layer** | Each instruction creates a cached layer. |  |
+:::
+
+## Dockerfile as a Blueprint
+
+Before we memorize the keywords, we need to understand the strategy. How do we define this "Apartment"?
+
+::: {.callout-note icon="false"}
+## blueprint.txt
+
+A `Dockerfile` is a script that answers three fundamental questions:
+
+1.  **Base:** What OS are we starting with? (Ubuntu? Python? Node?)
+2.  **Content:** What files do we need to copy in? (Your code)
+3.  **Startup:** What command runs when we turn it on?
+:::
+
+Let's build the absolute simplest container possible: A Python script that prints a message.
+
+::: {.callout-tip icon="false"}
+## hello_world.py
+
+First, the Python script (`main.py`) on your laptop:
+
+``` python
+print("Hello from inside the Matrix!")
+```
+:::
+
+::: {.callout-important icon="false"}
+## Dockerfile
+
+Next, the instructions to package it. Create a file named `Dockerfile` (no extension):
+
+``` dockerfile
+# 1. THE BASE (The OS)
+# Download a tiny version of Linux with Python pre-installed
+FROM python:3.12-slim
+
+# 2. THE CONTENT (The Files)
+# Copy main.py from your laptop to the container's disk
+COPY main.py .
+
+# 3. THE STARTUP (The Action)
+# Run this command when the container starts
+CMD ["python", "main.py"]
+```
+:::
+
+**The Result:** When you run this, Docker downloads Python, copies your specific file, and executes it in a completely isolated environment. Now, let's look at the full list of commands available to us.
+
+------------------------------------------------------------------------
+
+## Part 5: Docker Commands
+
+Below are the commands used to write a `Dockerfile`.
+
+::: {.callout-note icon="false"}
+## manual.txt
+
+| Keyword | Function | Example |
+|:-----------------------|:-----------------------|:-----------------------|
+| **FROM** | Specifies the base image. Starts a new build stage. | `FROM python:3.12-slim` |
+| **WORKDIR** | Sets the folder for subsequent commands. | `WORKDIR /app` |
+| **COPY** | Moves files from Host -\> Image. | `COPY requirements.txt .` |
+| **RUN** | Executes a command *during the build* (creates a layer). | `RUN pip install pandas` |
+| **ENV** | Sets environment variables (persists at runtime). | `ENV DEBUG=1` |
+| **CMD** | The default command when container *starts*. | `CMD ["python", "app.py"]` |
+:::
+
+### Optimization Strategy (Caching)
+
+Docker builds in layers. If you change a file, Docker rebuilds that layer *and every layer after it*.
+
+**Bad:**
+
+``` dockerfile
+COPY . .
+RUN pip install -r requirements.txt
+# If you change 1 line of code, Docker re-installs ALL pip packages.
+```
+
+**Good:**
+
+``` dockerfile
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+# Docker caches the pip install step unless requirements.txt changes.
+```
+
+![Docker is like an onion or an ogre; it has layers. ](images/docker_layers.png)
+
+## Part 6: The Control Panel (CLI)
+
+Writing the Dockerfile is only Step 1. Now you must compile it, ship it, and manage it.
+
+::: {.callout-note icon="false"}
+## build.exe — Compiling the Image
+
+Once you have a `Dockerfile` in your folder, you need to build it.
+
+``` bash
+# Syntax: docker build -t [NAME:TAG] [PATH_TO_CONTEXT]
+docker build -t my-python-app:v1 .
+```
+
+-   **`-t` (Tag):** Names your image. If you don't provide a `:tag`, it defaults to `:latest`.
+-   **`.` (Context):** Critical! This tells Docker "Look for files in the **current directory**."
+:::
+
+::: {.callout-tip icon="false"}
+## registry_sync.exe — Pulling & Pushing
+
+You don't always build from scratch. Usually, you download base images from the cloud (Docker Hub).
+
+``` bash
+# Download an image
+docker pull python:3.12-slim
+
+# Upload your image (requires docker login)
+docker push myusername/my-python-app:v1
+```
+:::
+
+::: {.callout-notes icon="false"}
+##  Monitoring
+
+How do you know what is running?
+
+| Command | Action |
+|:-----------------------------------|:-----------------------------------|
+| `docker images` | Lists all **Images** stored on your hard drive. |
+| `docker ps` | Lists all **Running Containers** (Active Processes). |
+| `docker ps -a` | Lists **ALL** Containers (Running + Stopped/Crashed). |
+| `docker logs [ID]` | Prints the console output of a container (Crucial for debugging). |
+:::
+
+::: {.callout-warning icon="false"}
+## recycle.bin — Cleanup
+
+Docker loves to eat hard drive space. Old containers and images do not disappear automatically; they pile up.
+
+``` bash
+# Stop a specific container
+docker stop [CONTAINER_ID]
+
+# Remove a specific container
+docker rm [CONTAINER_ID]
+
+# THE NUCLEAR OPTION
+# Deletes all stopped containers, unused networks, and dangling images.
+docker system prune
+```
+:::
+
+------------------------------------------------------------------------
+
+## Part 7: Interacting with Docker
+
+A container is a black box. How do you actually interact with the Docker container?
+
+### 1. Port Mapping (Networking)
+
+If you run a web server on port 5000 *inside* the container, you cannot access it from your laptop automatically. You'll need the `-p` flag. 
+
+::: {.callout-tip icon="false"}
+## PORT_FORWARD.CFG
+
+Use the `-p` flag: `HOST_PORT:CONTAINER_PORT`
+
+``` bash
+docker run -p 8080:5000 my-web-app
+```
+
+-   **Host:** `localhost:8080`
+-   **Container:** `5000`
+:::
+
+### 2. Volumes (Persistence)
+
+**The Amnesia Problem:** If you restart a container, all saved files are lost. The filesystem resets to the Image state.
+
+::: {.callout-tip icon="false"}
+## MOUNT_POINT.LNK
+
+Use the `-v` flag: `HOST_PATH:CONTAINER_PATH`
+
+``` bash
+docker run -v ./data:/app/data my-data-app
+```
+
+This maps your local `./data` folder into the container. 
+
+1. **Persistence:** Files survive restarts. 
+2. **Live Dev:** Edit code locally, see changes in container instantly.
+:::
+
+### 3. Interactive Mode (Shell)
+
+Sometimes you need to look inside.
+
+``` bash
+# -it = Interactive Terminal
+docker run -it ubuntu bash
+```
+
+- Interactive mode allows you to run commands in the container like you would on your own computer. 
+
+------------------------------------------------------------------------
+
+## Part 8: Examples
+
+### Example A: Python ML Dev Environment
+
+A portable data science lab. Includes Jupyter, Pandas, and Scikit-Learn.
+
+::: {.callout-note icon="false"}
+## Dockerfile
+
+``` dockerfile
+FROM python:3.10-slim
+
+# System deps (compilers for numpy/scipy)
+RUN apt-get update && apt-get install -y build-essential
+
+# Install Python deps
+COPY requirements-dev.txt .
+RUN pip install -r requirements-dev.txt
+
+# Create non-root user (Safety)
+RUN useradd --create-home developer
+USER developer
+WORKDIR /home/developer
+
+# Start Jupyter
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--no-browser"]
+```
+:::
+
+### Example B: Production Web App (FastAPI)
+
+A simple web server. 
+
+::: {.callout-note icon="false"}
+## Dockerfile
+
+``` dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install deps first (Caching)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy code
+COPY . .
+
+# Non-root user
+RUN useradd appuser
+USER appuser
+
+# Run with Uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+:::
+
+## Part 9: Orchestration (Docker Compose)
+
+Running `docker run -p 80:80 -v ...` is tedious. Real apps have multiple services (App + DB).
+
+::: {.callout-important icon="false"}
+## docker-compose.yaml
+
+``` yaml
+version: "3.9"
+services:
+  # Service 1: The Web App
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
+  # Service 2: The Database
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: example
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+# Persistent Volume Definition
+volumes:
+  pgdata:
+```
+:::
+
+**Command:** `docker compose up` (Builds, Networks, and Starts everything).
+
+------------------------------------------------------------------------
+
+## PART 9: SECURITY_PROTOCOL.BAT
+
+1.  **Don’t run as root:** Use `USER appuser` in your Dockerfile.
+2.  **Minimize image size:** Use `-slim` or `-alpine` images to reduce attack surface.
+3.  **Scan images:** Use tools like Trivy to find vulnerabilities in your dependencies.
+4.  **No Secrets:** NEVER put API Keys or Passwords in a `Dockerfile`. Use Environment Variables or Secret Managers.
+5.  **Use .dockerignore:** Prevent `.env` files or `.git` history from being copied into the image.
+
+------------------------------------------------------------------------
+
+## SHUTDOWN_SEQUENCE
+
+**\< SYSTEM HALTED \>**
+
+::: {.callout-note icon="false"}
+## DISCUSSION.EXE
+
+1.  Build the FastAPI image and run it.
+2.  Use `docker exec` to hack into the running container.
+3.  Use Compose to spin up a Database and App simultaneously.
+:::
