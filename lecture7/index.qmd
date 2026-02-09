@@ -21,11 +21,9 @@ title: "Lecture 7 — Containers & Docker"
 
 ## Part 1: The Problem
 
-::: {.callout-note icon="false"}
-## mymachine.png
+
 
 ![I swear it worked on my machine.](images/mymachine.jpg){fig-align="center"}
-:::
 
 ::: {.callout-important icon="false"}
 ## error_log.txt
