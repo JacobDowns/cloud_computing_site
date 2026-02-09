@@ -104,7 +104,7 @@ Think of a Container as an apartment:
 
 **Short answer:**\
 - In the cloud: **no, almost never**\
-- On laptops (macOS/Windows): **sometimes, mainly for file I/O** :::
+- On laptops (macOS/Windows): **sometimes, mainly for file I/O** 
 
 ### Why containers are usually fast
 
@@ -163,14 +163,6 @@ As a result:
 -   The “Docker feels slow” problem largely disappears
 :::
 
-::: {.callout-note collapse="true"}
-## discussion.exe — Quick questions
-
-1.  Why does container performance improve when running on Linux hosts?
-2.  Why might file-heavy workloads feel slower in Docker on a laptop?
-3.  Why is VM cost amortization important for cloud scalability?
-:::
-
 ------------------------------------------------------------------------
 
 ## Part 4: Docker Terminology
@@ -203,23 +195,23 @@ A `Dockerfile` is a script that answers three fundamental questions:
 3.  **Startup:** What command runs when we turn it on?
 :::
 
-Let's build the absolute simplest container possible: A Python script that prints a message.
+Let's build the absolute simplest container possible: A Python script that prints a message. Create a new directory and include two files:
+
+First, the Python script (`main.py`) on your laptop:
 
 ::: {.callout-tip icon="false"}
 ## hello_world.py
 
-First, the Python script (`main.py`) on your laptop:
 
 ``` python
 print("Hello from inside the Matrix!")
 ```
 :::
 
-::: {.callout-important icon="false"}
-## Dockerfile
-
 Next, the instructions to package it. Create a file named `Dockerfile` (no extension):
 
+::: {.callout-important icon="false"}
+## Dockerfile
 ``` dockerfile
 # 1. THE BASE (The OS)
 # Download a tiny version of Linux with Python pre-installed
@@ -233,9 +225,29 @@ COPY main.py .
 # Run this command when the container starts
 CMD ["python", "main.py"]
 ```
+
+
 :::
 
-**The Result:** When you run this, Docker download uses a base Ubuntu image with Python installed, copies your specific file, and executes it in a completely isolated environment. Now, let's look at the full list of commands available to us.
+**1. Build the Image**
+We use `-t` to tag (name) the image "hello-docker". The `.` at the end tells Docker to look in the current directory.
+
+```bash
+docker build -t hello-docker .
+```
+
+**2. Run the Container**
+Now that the image exists in your library, run it.
+
+```bash
+docker run hello-docker
+```
+
+*Output:*
+`Hello from inside the matrix!`
+
+
+**Congratulations.** You just ran code in an isolated Linux environment without installing that version of Python on your laptop.
 
 ------------------------------------------------------------------------
 
@@ -281,7 +293,7 @@ COPY . .
 
 ## Part 6: The Control Panel (CLI)
 
-Writing the Dockerfile is the first step. Now you havew to build it.
+Writing the Dockerfile is the first step. Now you have to build it.
 
 ::: {.callout-note icon="false"}
 ## build.exe — Compiling the Image
@@ -353,7 +365,7 @@ A container is a black box. How do you actually interact with the Docker contain
 If you run a web server on port 5000 *inside* the container, you cannot access it from your laptop automatically. You'll need the `-p` flag. 
 
 ::: {.callout-tip icon="false"}
-## PORT_FORWARD.CFG
+## forward.cfg
 
 Use the `-p` flag: `HOST_PORT:CONTAINER_PORT`
 
@@ -370,7 +382,7 @@ docker run -p 8080:5000 my-web-app
 **The Amnesia Problem:** If you restart a container, all saved files are lost. The filesystem resets to the Image state.
 
 ::: {.callout-tip icon="false"}
-## MOUNT_POINT.LNK
+## mount.lnk
 
 Use the `-v` flag: `HOST_PATH:CONTAINER_PATH`
 
@@ -400,7 +412,7 @@ docker run -it ubuntu bash
 Sometimes a container is already running (like a database or web server), and you need to debug it without stopping it.
 
 ::: {.callout-tip icon="false"}
-## INJECTION.EXE
+##  injection.exe
 
 Use `docker exec` to inject a new process into a running container.
 
@@ -410,11 +422,13 @@ docker exec -it my-web-app bash
 ```
 
 **The difference between `run` and `exec`:**
+
 * **`run`**: Creates a **new** container.
 * **`exec`**: Enters an **existing** container.
 
 **Real World Use Case:**
 Your database is acting weird. You don't want to restart it.
+
 1.  `docker ps` (Find the ID, e.g., `a1b2c3d4`).
 2.  `docker exec -it a1b2c3d4 psql -U postgres`
 3.  You are now running SQL queries inside the live database.
