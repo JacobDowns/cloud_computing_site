@@ -180,18 +180,18 @@ A list of important terms for understanding Docker:
 ::: {.callout-tip icon="false"}
 ## terminology.doc
 
-| Term | Technical Definition |   |
-|:-----------------------|:-----------------------|:-----------------------|
-| **Dockerfile** A text file with build instructions. |  |  |
-| **Image** An immutable filesystem + metadata. Read-only. |  |  |
-| **Container** | A running instance of an image. |  |
-| **Registry** | Storage for images (Docker Hub, GHCR). |  |
-| **Layer** | Each instruction creates a cached layer. |  |
+| Term | Technical Definition |  
+|:-----------------------|:-----------------------|
+| **Dockerfile** | A text file with build instructions. | 
+| **Image** | An immutable filesystem + metadata. Read-only. | 
+| **Container** | A running instance of an image. | 
+| **Registry** | Storage for images (Docker Hub, GHCR). | 
+| **Layer** | Each instruction creates a cached layer. | 
 :::
 
 ## Dockerfile as a Blueprint
 
-Before we memorize the keywords, we need to understand the strategy. How do we define this "Apartment"?
+What does a Dockerfile actually need to contain?
 
 ::: {.callout-note icon="false"}
 ## blueprint.txt
@@ -235,7 +235,7 @@ CMD ["python", "main.py"]
 ```
 :::
 
-**The Result:** When you run this, Docker downloads Python, copies your specific file, and executes it in a completely isolated environment. Now, let's look at the full list of commands available to us.
+**The Result:** When you run this, Docker download uses a base Ubuntu image with Python installed, copies your specific file, and executes it in a completely isolated environment. Now, let's look at the full list of commands available to us.
 
 ------------------------------------------------------------------------
 
@@ -281,7 +281,7 @@ COPY . .
 
 ## Part 6: The Control Panel (CLI)
 
-Writing the Dockerfile is only Step 1. Now you must compile it, ship it, and manage it.
+Writing the Dockerfile is the first step. Now you havew to build it.
 
 ::: {.callout-note icon="false"}
 ## build.exe — Compiling the Image
@@ -395,6 +395,31 @@ docker run -it ubuntu bash
 
 - Interactive mode allows you to run commands in the container like you would on your own computer. 
 
+### 4. Live Hacking (Exec)
+
+Sometimes a container is already running (like a database or web server), and you need to debug it without stopping it.
+
+::: {.callout-tip icon="false"}
+## INJECTION.EXE
+
+Use `docker exec` to inject a new process into a running container.
+
+```bash
+# Syntax: docker exec -it [CONTAINER_ID] [COMMAND]
+docker exec -it my-web-app bash
+```
+
+**The difference between `run` and `exec`:**
+* **`run`**: Creates a **new** container.
+* **`exec`**: Enters an **existing** container.
+
+**Real World Use Case:**
+Your database is acting weird. You don't want to restart it.
+1.  `docker ps` (Find the ID, e.g., `a1b2c3d4`).
+2.  `docker exec -it a1b2c3d4 psql -U postgres`
+3.  You are now running SQL queries inside the live database.
+:::
+
 ------------------------------------------------------------------------
 
 ## Part 8: Examples
@@ -456,12 +481,76 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ## Part 9: Orchestration (Docker Compose)
 
-Running `docker run -p 80:80 -v ...` is tedious. Real apps have multiple services (App + DB).
+- The primary role of Docker Compose is to orchestrate complex, multi-container apps. 
+- For example: a full stack app that has a container for the web app and a seprate container for the database. 
+- It is also the best way to save your sanity by avoiding having to manually type out complex docker commands. 
+
+### 1. The "Save Game" Feature
+
+Running Docker manually is tedious. You have to remember every flag every time.
+
+::: {.callout-warning icon="false"}
+## manual_entry.txt — The Hard Way
+
+Imagine typing this every morning to start your dev server:
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  -v ./src:/app/src \
+  -v ./data:/app/data \
+  --env-file .env \
+  --name my-project \
+  my-python-image:latest
+```
+
+If you forget one flag (like the volume mount), your code won't save, or the app crashes.
+:::
+
+::: {.callout-tip icon="false"}
+## shortcut.lnk — The Easy Way
+
+Docker Compose lets us write those flags **once** into a file.
+
+**File:** `docker-compose.yml`
+
+```yaml
+version: "3.9"
+services:
+  # The service name (you can call it anything)
+  dev-server:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+    env_file:
+      - .env
+```
+
+**The Command:**
+
+```bash
+docker compose up
+```
+
+**Why this wins:**
+
+1.  **Reproducibility:** You don't have to write a README saying "Please run this specific long command." You just commit the YAML file.
+2.  **Memory:** You don't have to remember which ports map to what.
+:::
+
+### 2. Multi-Container Orchestration
+
+The *original* purpose of Compose is to run multiple containers that talk to each other.
+
+
 
 ::: {.callout-important icon="false"}
-## docker-compose.yaml
+## full_stack.yaml
 
-``` yaml
+```yaml
 version: "3.9"
 services:
   # Service 1: The Web App
@@ -471,8 +560,7 @@ services:
       - "8000:8000"
     depends_on:
       - db
-    volumes:
-      - .:/app
+    # Docker automatically creates a network between 'web' and 'db'
 
   # Service 2: The Database
   db:
@@ -492,7 +580,7 @@ volumes:
 
 ------------------------------------------------------------------------
 
-## PART 9: SECURITY_PROTOCOL.BAT
+## Part 10: security.bat
 
 1.  **Don’t run as root:** Use `USER appuser` in your Dockerfile.
 2.  **Minimize image size:** Use `-slim` or `-alpine` images to reduce attack surface.
@@ -511,5 +599,4 @@ volumes:
 
 1.  Build the FastAPI image and run it.
 2.  Use `docker exec` to hack into the running container.
-3.  Use Compose to spin up a Database and App simultaneously.
 :::
