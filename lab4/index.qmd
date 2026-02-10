@@ -1,391 +1,212 @@
 ---
 title: "Lab 4 — The Container Exchange"
-subtitle: "Reproducibility, Interfaces, and the Illusion of 'My Machine'"
+subtitle: "Building and Shipping with Docker Hub"
 ---
 
-# Part 1: The Lab Activity
+# A:\LAB_04_EXCHANGE.QMD
 
-::: callout-note
-## mission_brief.txt — Objective
+**System Date:** FEB-10-2026 <br/> **Volume Label:** DOCKER_HUB_SYNC <br/> **Subject:** CONTAINER DEPLOYMENT & REGISTRIES
 
-**Goal:**  
-Work in teams to build a reproducible Docker container, then exchange Dockerfiles with another team and run each other’s applications successfully.
+------------------------------------------------------------------------
 
-The programming is intentionally simple — the learning focus is Docker configuration and *reproducible interfaces*.
-:::
+::: {.callout-note icon="false"}
+## MISSION_BRIEF.TXT
 
-## Step 1: Team Assignment
+Today, we are moving from theory to production. You will split into two groups. 
 
-::: callout-important
-## team_allocator.exe
+* **Group A** will engineer a portable Machine Learning Environment.
+* **Group B** will deploy a Generative Art Web API.
 
-Split into two groups:
+**The Protocol:**
 
-- **Group A:** Configurable Python Report Generator  
-- **Group B:** Minimal Python Web Service
-:::
+1.  **Build:** Construct your assigned container based on the spec sheet.
+2.  **Ship:** Push your compiled image to a public registry (Docker Hub).
+3.  **Sync:** Trade your Docker Hub image tag with a team from the other group.
+4.  **Run:** Pull and run their container to verify it works on your machine.
+5.  **Swap:** Switch roles and build the second container.
 
-## Step 2: Shared Rules (Read Carefully)
-
-::: callout-warning
-## constraints.sys — Non-Negotiable Rules
-
-### Host Expectations (What the other group has)
-Assume the host machine has:
-
-- Docker Desktop / Docker Engine installed
-- A terminal (PowerShell, Terminal, Git Bash, etc.)
-- A browser **or** `curl` (either is fine)
-
-Assume the host machine does **not** have:
-
-- Python installed
-- pip installed
-- Any global packages installed
-
-### Interface Expectations (What your container must document)
-Your README (or run instructions) must clearly state:
-
-- The required environment variables (names + defaults)
-- The required volume mounts (host path → container path)
-- The port mapping (host port → container port), if applicable
-- Exactly one command to build and one command to run
-
-### Prohibited solutions
-- “Just install X on your machine”
-- “Run these three setup scripts on the host”
-- Relying on absolute host paths like `/Users/alice/...`
+This lab requires problem-solving. You have the `Dockerfile` manual from the lecture; now you must assemble the blueprint.
 :::
 
 ------------------------------------------------------------------------
 
-# Part 2: The Deliverable (What You Must Submit)
+## PART 0: THE_REGISTRY (DOCKER HUB)
 
-::: callout-note
-## deliverable.pkg
+Before we build, we need a place to ship our containers. Docker Hub is the GitHub of container images.
 
-Each group must produce a folder containing:
+::: {.callout-important icon="false"}
+## NETWORK_SETUP.BAT
 
-- `Dockerfile`
-- `requirements.txt` (Group B required; Group A optional)
-- `app.py` (or similar)
-- `RUNME.md` containing:
-  - build command
-  - run command(s)
-  - description of inputs (env vars, volumes, ports)
-:::
-
-------------------------------------------------------------------------
-
-# Group A — The Configurable Report Generator
-
-::: callout-note
-## report.exe — Objective
-
-Build a Dockerized Python program that prints a formatted report to **stdout** when run.
-:::
-
-## Required Behavior
-
-When your container runs, it should output something similar to:
-
-```text
-=== Application Report ===
-App Name: report-generator
-Mode: production
-User: alice
-Config file loaded: yes
-Timestamp: 2026-02-09 14:32:10
-==========================
-```
-
-## Required Inputs (Your Interface Contract)
-
-Your container must use **both** of these:
-
-### 1) Environment Variables
-You must support these env vars (with defaults):
-
-- `APP_NAME` (default: `report-generator`)
-- `APP_MODE` (default: `development`)
-
-### 2) Volume + File
-You must read a file from a mounted volume:
-
-- Container path: `/data/user.txt`
-- Expected contents: one line with the user name (e.g., `alice`)
-
-If the file does not exist, you must print `User: unknown` and `Config file loaded: no`.
-
-## Allowed Python Packages
-
-::: callout-tip
-## pkg_policy.py
-
-For Group A, use **standard library only**:
-
-- `os`, `datetime`, `pathlib`, etc.
-
-No third-party libraries required.
-:::
-
-## Suggested Minimal Python (Optional Template)
-
-```python
-import os
-from datetime import datetime
-from pathlib import Path
-
-app_name = os.getenv("APP_NAME", "report-generator")
-mode = os.getenv("APP_MODE", "development")
-
-user_path = Path("/data/user.txt")
-if user_path.exists():
-    user = user_path.read_text(encoding="utf-8").strip() or "unknown"
-    loaded = "yes"
-else:
-    user = "unknown"
-    loaded = "no"
-
-ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-print("=== Application Report ===")
-print(f"App Name: {app_name}")
-print(f"Mode: {mode}")
-print(f"User: {user}")
-print(f"Config file loaded: {loaded}")
-print(f"Timestamp: {ts}")
-print("==========================")
-```
-
-## Example Run Command (What you should document)
-
-### macOS / Linux
+1.  **Create an Account:** Go to [hub.docker.com](https://hub.docker.com/) and create a free account. Make note of your **Username**.
+2.  **Authenticate Locally:** Open your terminal and log in.
 ```bash
-docker run --rm \
-  -e APP_MODE=production \
-  -e APP_NAME=report-generator \
-  -v "$(pwd)/data:/data" \
-  report-a
+docker login
 ```
+  *(Enter your Docker Hub username and password/access token when prompted).*
+:::
 
-### Windows PowerShell
-```powershell
-docker run --rm `
-  -e APP_MODE=production `
-  -e APP_NAME=report-generator `
-  -v "${PWD}/data:/data" `
-  report-a
-```
+When you build an image intended for Docker Hub, you must tag it with your username. 
 
-> Your `RUNME.md` must include commands like these so the other team can run it immediately.
+* **Local Tag:** `docker build -t my-app .`
+* **Hub Tag:** `docker build -t yourusername/my-app:v1 .`
 
 ------------------------------------------------------------------------
 
-# Group B — The Minimal Web Service
+## PART 1: THE_ASSIGNMENTS
 
-::: callout-note
-## webserver.exe — Objective
+Split into your groups. Complete your primary objective first, then move to Part 2 to test the other group's work.
 
-Build a Dockerized Python web application that serves a dynamic webpage.
-:::
+### GROUP A: The Data Science Pod
 
-## Required Behavior
+Your objective is to create a portable Jupyter Lab environment pre-loaded with standard ML libraries. 
 
-When run, visiting `http://localhost:8080` should display something like:
+**The Specifications:**
 
-```text
-Hello from Docker!
-Environment: staging
-Hostname: <container-id>
-Message loaded from file: Welcome students!
+1.  **Base Image:** Use `python:3.12-slim`.
+2.  **Working Directory:** Set it to `/workspace`.
+3.  **System Dependencies:** You will need to `RUN apt-get update` and install `build-essential`. 
+    * Clean the apt cache in the same `RUN` command to keep the image small. 
+```bash
+RUN apt-get update && apt-get install -y
+--no-install-recommends build-essential 
+&& rm -rf /var/lib/apt/lists/*
+```
+4.  **Python Packages:** Create a `requirements.txt` file on your host machine containing: `numpy`, `pandas`, `scikit-learn`, `matplotlib`, and `jupyterlab`. Copy this into your image and `pip install` it.
+5.  **Security:** Create a non-root user named `developer` and switch to it.
+6.  **Network:** Expose port `8888`.
+7.  **Startup:** The container should run Jupyter Lab on `0.0.0.0` without trying to open a browser window. 
+* *Hint*: 
+```Dockerfile 
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888",
+"--no-browser", "--NotebookApp.token='lab123'"]
 ```
 
-## Required Inputs (Your Interface Contract)
+**Your Mission:** Write the `Dockerfile`, build the image (tagged with your Docker Hub username), and test it locally.
+---
 
-Your container must use **all three**:
+### GROUP B: The Generative Art API
 
-### 1) Port Forwarding
-- Container must listen on: `5000`
-- Host must map: `8080 → 5000`
+Your objective is to deploy a Python web server that generates random pixel art based on environment variables. 
 
-### 2) Environment Variable
-- `ENV_NAME` (default: `dev`)
-  - Example: `staging`, `prod`
+::: {.callout-note icon="false"}
+## server.py (The Payload)
 
-### 3) Volume + File
-- Container path: `/msg/message.txt`
-- Contents: one line message (e.g., `Welcome students!`)
-
-If the file does not exist, show: `Message loaded from file: (missing)`.
-
-## Allowed Python Packages
-
-::: callout-tip
-## pkg_policy.web
-
-To keep coding easy, use **Flask**.
-
-- `Flask==3.*` is recommended.
-- Do not add extra libraries beyond Flask unless you have a strong reason.
-:::
-
-Your project should include a `requirements.txt` like:
-
-```text
-Flask==3.*
-```
-
-## Suggested Minimal Flask App (Optional Template)
+Save this exact code as `server.py` in your project folder.
 
 ```python
 import os
-import socket
-from pathlib import Path
-from flask import Flask, Response
+import random
+from io import BytesIO
+from flask import Flask, Response, request
+from PIL import Image
 
 app = Flask(__name__)
 
+def parse_size(s: str) -> int:
+    try:
+        n = int(s)
+        return max(64, min(n, 1024))
+    except Exception:
+        return 256
+
 @app.get("/")
-def index():
-    env_name = os.getenv("ENV_NAME", "dev")
-    hostname = socket.gethostname()
+def home():
+    return Response(
+        "Random Art Server\n"
+        "Endpoints:\n"
+        "  /art.png         -> generated art\n"
+        "  /art.png?seed=42 -> reproducible art\n",
+        mimetype="text/plain",
+    )
 
-    msg_path = Path("/msg/message.txt")
-    if msg_path.exists():
-        msg = msg_path.read_text(encoding="utf-8").strip()
-        msg = msg if msg else "(empty)"
-    else:
-        msg = "(missing)"
+@app.get("/art.png")
+def art():
+    # Env-configurable defaults
+    default_seed = os.getenv("SEED", "")
+    mode = os.getenv("MODE", "noise")  # noise | stripes | blocks
+    size = parse_size(os.getenv("SIZE", "256"))
 
-    body = "\n".join([
-        "Hello from Docker!",
-        f"Environment: {env_name}",
-        f"Hostname: {hostname}",
-        f"Message loaded from file: {msg}",
-        ""
-    ])
-    return Response(body, mimetype="text/plain")
+    seed = request.args.get("seed", default_seed)
+    rng = random.Random(seed if seed != "" else None)
+
+    img = Image.new("RGB", (size, size))
+    pixels = img.load()
+
+    if mode == "stripes":
+        for y in range(size):
+            for x in range(size):
+                v = (x // 8) % 2
+                pixels[x, y] = (255 if v else 0, rng.randrange(256), 255 - rng.randrange(256))
+    elif mode == "blocks":
+        block = max(4, size // 16)
+        for by in range(0, size, block):
+            for bx in range(0, size, block):
+                color = (rng.randrange(256), rng.randrange(256), rng.randrange(256))
+                for y in range(by, min(by + block, size)):
+                    for x in range(bx, min(bx + block, size)):
+                        pixels[x, y] = color
+    else:  # noise
+        for y in range(size):
+            for x in range(size):
+                pixels[x, y] = (rng.randrange(256), rng.randrange(256), rng.randrange(256))
+
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return Response(buf.getvalue(), mimetype="image/png")
 
 if __name__ == "__main__":
-    # MUST listen on 0.0.0.0 inside the container
     app.run(host="0.0.0.0", port=5000)
 ```
+:::
 
-## Example Run Command (What you should document)
+**The Specifications:**
 
-### macOS / Linux
+1.  **Base Image:** Use `python:3.12-slim`.
+2.  **Dependencies:** You need `flask` and `pillow` in your `requirements.txt`.
+3.  **Security:** Create a non-root user named `appuser` and switch to it before running the app. 
+4.  **Configuration:** Use the `ENV` keyword in your `Dockerfile` to set default environment variables: `MODE="noise"` and `SIZE="256"`.
+5.  **Network:** The app runs on port `5000`. Expose it.
+6.  **Startup:** Run `python server.py`.
+
+**Your Mission:** Write the `Dockerfile`, build the image (tagged with your Docker Hub username), and verify you can view the art in your browser at `localhost:5000/art.png`.
+
+------------------------------------------------------------------------
+
+## PART 2: THE_UPLINK (PUSH TO HUB)
+
+Once your container is running locally, it is time to ship it.
+
+::: {.callout-tip icon="false"}
+## UPLOAD.EXE
+
+Assuming you tagged your image correctly during the build phase:
+`docker build -t yourusername/my-project:v1 .`
+
+Upload it to the cloud:
 ```bash
-docker run --rm \
-  -p 8080:5000 \
-  -e ENV_NAME=staging \
-  -v "$(pwd)/msg:/msg" \
-  web-b
+docker push yourusername/my-project:v1
 ```
+:::
 
-### Windows PowerShell
-```powershell
-docker run --rm `
-  -p 8080:5000 `
-  -e ENV_NAME=staging `
-  -v "${PWD}/msg:/msg" `
-  web-b
-```
+*Check your Docker Hub profile online. You should see your new repository.*
 
 ------------------------------------------------------------------------
 
-# Step 3: Midway Checkpoint (No Keyboards)
+## PART 3: THE_EXCHANGE (VALIDATION)
 
-::: callout-important
-## checkpoint.sync — Talk Before You Type
+Find a team from the other group. Give them your Docker Hub image tag (e.g., `janesmith/art-server:v1`). 
 
-Pause work.
+**The Test:**
 
-Each group must **verbally explain** to the other group:
-
-- What your container does
-- What inputs it expects (env vars / volumes / ports)
-- The exact command(s) to run it
-
-Do **not** show your screen yet.
-
-If you cannot explain it clearly, your container is not ready.
-:::
+1.  **Pull:** Download their image using `docker pull [THEIR_TAG]`.
+2.  **Run:** Write the `docker run` command to start their container on your machine.
+    * *Group A running Group B's Art Server:* Don't forget to map the ports! Try passing an environment variable (`-e MODE="blocks"`) to see if it overrides their defaults.
+    * *Group B running Group A's ML Pod:* Map the ports and test if you can access Jupyter Lab at `localhost:8888` using the password `lab123`. Try mounting a local folder as a volume (`-v`) to see if you can save a notebook to your actual hard drive.
 
 ------------------------------------------------------------------------
 
-# Step 4: The Exchange
+## SHUTDOWN_SEQUENCE
 
-::: callout-note
-## exchange.zip — Swap Artifacts
+**< SYSTEM HALTED >**
 
-Groups exchange:
-
-- `Dockerfile`
-- Python source code
-- `requirements.txt` (if present)
-- `RUNME.md`
-
-Do **not** exchange:
-- built images
-- `.env` files
-- undocumented host steps
-:::
-
-------------------------------------------------------------------------
-
-# Step 5: The First Run
-
-::: callout-warning
-## runtime.exe — Trust the Interface
-
-Attempt to build and run the other group’s project using only their `RUNME.md`.
-
-Write down:
-- What worked
-- What failed
-- What was unclear
-:::
-
-------------------------------------------------------------------------
-
-# Step 6: Collaborative Debugging
-
-::: callout-tip
-## debugger.dll — Humans in the Loop
-
-You may now:
-
-- Ask the other group questions
-- Clarify expected behavior
-- Make *minimal* fixes
-
-You may only fix issues by changing:
-- the Dockerfile
-- runtime configuration
-- documentation
-
-No “just install X” solutions allowed.
-:::
-
-------------------------------------------------------------------------
-
-# Part 3: The Debrief
-
-::: callout-note
-## postmortem.md — Group Discussion
-
-We will discuss:
-
-- What assumptions broke first?
-- What did Docker force you to make explicit?
-- Which interface detail was most important: env vars, volumes, or ports?
-- How does this map to real cloud deployments?
-:::
-
-::: callout-note
-## takeaway.txt
-
-> “If it runs on my machine, but not yours,  
-> then my machine is the bug.”
-:::
+Once you have verified the other group's container, swap roles. Group A builds the Art Server, and Group B builds the ML Pod.
