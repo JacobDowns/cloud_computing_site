@@ -67,7 +67,8 @@ Think of a Virtual Machine (VM) as a house:
 
 Think of a Container as an apartment:
 
--   It is self-contained (your own furniture/libraries). - However, it shares the foundation, plumbing, and roof with the building (The Host Kernel).
+-   It is self-contained (your own furniture/libraries).
+- However, it shares the foundation, plumbing, and roof with the building (The Host Kernel).
 -   **Pros:**:
     -   Lightweight (MBs, not GBs).
     -   Boots in milliseconds.

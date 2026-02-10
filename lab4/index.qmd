@@ -1,0 +1,391 @@
+---
+title: "Lab 4 — The Container Exchange"
+subtitle: "Reproducibility, Interfaces, and the Illusion of 'My Machine'"
+---
+
+# Part 1: The Lab Activity
+
+::: callout-note
+## mission_brief.txt — Objective
+
+**Goal:**  
+Work in teams to build a reproducible Docker container, then exchange Dockerfiles with another team and run each other’s applications successfully.
+
+The programming is intentionally simple — the learning focus is Docker configuration and *reproducible interfaces*.
+:::
+
+## Step 1: Team Assignment
+
+::: callout-important
+## team_allocator.exe
+
+Split into two groups:
+
+- **Group A:** Configurable Python Report Generator  
+- **Group B:** Minimal Python Web Service
+:::
+
+## Step 2: Shared Rules (Read Carefully)
+
+::: callout-warning
+## constraints.sys — Non-Negotiable Rules
+
+### Host Expectations (What the other group has)
+Assume the host machine has:
+
+- Docker Desktop / Docker Engine installed
+- A terminal (PowerShell, Terminal, Git Bash, etc.)
+- A browser **or** `curl` (either is fine)
+
+Assume the host machine does **not** have:
+
+- Python installed
+- pip installed
+- Any global packages installed
+
+### Interface Expectations (What your container must document)
+Your README (or run instructions) must clearly state:
+
+- The required environment variables (names + defaults)
+- The required volume mounts (host path → container path)
+- The port mapping (host port → container port), if applicable
+- Exactly one command to build and one command to run
+
+### Prohibited solutions
+- “Just install X on your machine”
+- “Run these three setup scripts on the host”
+- Relying on absolute host paths like `/Users/alice/...`
+:::
+
+------------------------------------------------------------------------
+
+# Part 2: The Deliverable (What You Must Submit)
+
+::: callout-note
+## deliverable.pkg
+
+Each group must produce a folder containing:
+
+- `Dockerfile`
+- `requirements.txt` (Group B required; Group A optional)
+- `app.py` (or similar)
+- `RUNME.md` containing:
+  - build command
+  - run command(s)
+  - description of inputs (env vars, volumes, ports)
+:::
+
+------------------------------------------------------------------------
+
+# Group A — The Configurable Report Generator
+
+::: callout-note
+## report.exe — Objective
+
+Build a Dockerized Python program that prints a formatted report to **stdout** when run.
+:::
+
+## Required Behavior
+
+When your container runs, it should output something similar to:
+
+```text
+=== Application Report ===
+App Name: report-generator
+Mode: production
+User: alice
+Config file loaded: yes
+Timestamp: 2026-02-09 14:32:10
+==========================
+```
+
+## Required Inputs (Your Interface Contract)
+
+Your container must use **both** of these:
+
+### 1) Environment Variables
+You must support these env vars (with defaults):
+
+- `APP_NAME` (default: `report-generator`)
+- `APP_MODE` (default: `development`)
+
+### 2) Volume + File
+You must read a file from a mounted volume:
+
+- Container path: `/data/user.txt`
+- Expected contents: one line with the user name (e.g., `alice`)
+
+If the file does not exist, you must print `User: unknown` and `Config file loaded: no`.
+
+## Allowed Python Packages
+
+::: callout-tip
+## pkg_policy.py
+
+For Group A, use **standard library only**:
+
+- `os`, `datetime`, `pathlib`, etc.
+
+No third-party libraries required.
+:::
+
+## Suggested Minimal Python (Optional Template)
+
+```python
+import os
+from datetime import datetime
+from pathlib import Path
+
+app_name = os.getenv("APP_NAME", "report-generator")
+mode = os.getenv("APP_MODE", "development")
+
+user_path = Path("/data/user.txt")
+if user_path.exists():
+    user = user_path.read_text(encoding="utf-8").strip() or "unknown"
+    loaded = "yes"
+else:
+    user = "unknown"
+    loaded = "no"
+
+ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+print("=== Application Report ===")
+print(f"App Name: {app_name}")
+print(f"Mode: {mode}")
+print(f"User: {user}")
+print(f"Config file loaded: {loaded}")
+print(f"Timestamp: {ts}")
+print("==========================")
+```
+
+## Example Run Command (What you should document)
+
+### macOS / Linux
+```bash
+docker run --rm \
+  -e APP_MODE=production \
+  -e APP_NAME=report-generator \
+  -v "$(pwd)/data:/data" \
+  report-a
+```
+
+### Windows PowerShell
+```powershell
+docker run --rm `
+  -e APP_MODE=production `
+  -e APP_NAME=report-generator `
+  -v "${PWD}/data:/data" `
+  report-a
+```
+
+> Your `RUNME.md` must include commands like these so the other team can run it immediately.
+
+------------------------------------------------------------------------
+
+# Group B — The Minimal Web Service
+
+::: callout-note
+## webserver.exe — Objective
+
+Build a Dockerized Python web application that serves a dynamic webpage.
+:::
+
+## Required Behavior
+
+When run, visiting `http://localhost:8080` should display something like:
+
+```text
+Hello from Docker!
+Environment: staging
+Hostname: <container-id>
+Message loaded from file: Welcome students!
+```
+
+## Required Inputs (Your Interface Contract)
+
+Your container must use **all three**:
+
+### 1) Port Forwarding
+- Container must listen on: `5000`
+- Host must map: `8080 → 5000`
+
+### 2) Environment Variable
+- `ENV_NAME` (default: `dev`)
+  - Example: `staging`, `prod`
+
+### 3) Volume + File
+- Container path: `/msg/message.txt`
+- Contents: one line message (e.g., `Welcome students!`)
+
+If the file does not exist, show: `Message loaded from file: (missing)`.
+
+## Allowed Python Packages
+
+::: callout-tip
+## pkg_policy.web
+
+To keep coding easy, use **Flask**.
+
+- `Flask==3.*` is recommended.
+- Do not add extra libraries beyond Flask unless you have a strong reason.
+:::
+
+Your project should include a `requirements.txt` like:
+
+```text
+Flask==3.*
+```
+
+## Suggested Minimal Flask App (Optional Template)
+
+```python
+import os
+import socket
+from pathlib import Path
+from flask import Flask, Response
+
+app = Flask(__name__)
+
+@app.get("/")
+def index():
+    env_name = os.getenv("ENV_NAME", "dev")
+    hostname = socket.gethostname()
+
+    msg_path = Path("/msg/message.txt")
+    if msg_path.exists():
+        msg = msg_path.read_text(encoding="utf-8").strip()
+        msg = msg if msg else "(empty)"
+    else:
+        msg = "(missing)"
+
+    body = "\n".join([
+        "Hello from Docker!",
+        f"Environment: {env_name}",
+        f"Hostname: {hostname}",
+        f"Message loaded from file: {msg}",
+        ""
+    ])
+    return Response(body, mimetype="text/plain")
+
+if __name__ == "__main__":
+    # MUST listen on 0.0.0.0 inside the container
+    app.run(host="0.0.0.0", port=5000)
+```
+
+## Example Run Command (What you should document)
+
+### macOS / Linux
+```bash
+docker run --rm \
+  -p 8080:5000 \
+  -e ENV_NAME=staging \
+  -v "$(pwd)/msg:/msg" \
+  web-b
+```
+
+### Windows PowerShell
+```powershell
+docker run --rm `
+  -p 8080:5000 `
+  -e ENV_NAME=staging `
+  -v "${PWD}/msg:/msg" `
+  web-b
+```
+
+------------------------------------------------------------------------
+
+# Step 3: Midway Checkpoint (No Keyboards)
+
+::: callout-important
+## checkpoint.sync — Talk Before You Type
+
+Pause work.
+
+Each group must **verbally explain** to the other group:
+
+- What your container does
+- What inputs it expects (env vars / volumes / ports)
+- The exact command(s) to run it
+
+Do **not** show your screen yet.
+
+If you cannot explain it clearly, your container is not ready.
+:::
+
+------------------------------------------------------------------------
+
+# Step 4: The Exchange
+
+::: callout-note
+## exchange.zip — Swap Artifacts
+
+Groups exchange:
+
+- `Dockerfile`
+- Python source code
+- `requirements.txt` (if present)
+- `RUNME.md`
+
+Do **not** exchange:
+- built images
+- `.env` files
+- undocumented host steps
+:::
+
+------------------------------------------------------------------------
+
+# Step 5: The First Run
+
+::: callout-warning
+## runtime.exe — Trust the Interface
+
+Attempt to build and run the other group’s project using only their `RUNME.md`.
+
+Write down:
+- What worked
+- What failed
+- What was unclear
+:::
+
+------------------------------------------------------------------------
+
+# Step 6: Collaborative Debugging
+
+::: callout-tip
+## debugger.dll — Humans in the Loop
+
+You may now:
+
+- Ask the other group questions
+- Clarify expected behavior
+- Make *minimal* fixes
+
+You may only fix issues by changing:
+- the Dockerfile
+- runtime configuration
+- documentation
+
+No “just install X” solutions allowed.
+:::
+
+------------------------------------------------------------------------
+
+# Part 3: The Debrief
+
+::: callout-note
+## postmortem.md — Group Discussion
+
+We will discuss:
+
+- What assumptions broke first?
+- What did Docker force you to make explicit?
+- Which interface detail was most important: env vars, volumes, or ports?
+- How does this map to real cloud deployments?
+:::
+
+::: callout-note
+## takeaway.txt
+
+> “If it runs on my machine, but not yours,  
+> then my machine is the bug.”
+:::
