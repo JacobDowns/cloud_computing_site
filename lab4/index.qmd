@@ -3,8 +3,6 @@ title: "Lab 4 — The Container Exchange"
 subtitle: "Building and Shipping with Docker Hub"
 ---
 
-# A:\LAB_04_EXCHANGE.QMD
-
 **System Date:** FEB-10-2026 <br/> **Volume Label:** DOCKER_HUB_SYNC <br/> **Subject:** CONTAINER DEPLOYMENT & REGISTRIES
 
 ------------------------------------------------------------------------
@@ -64,24 +62,32 @@ Your objective is to create a portable Jupyter Lab environment pre-loaded with s
 
 1.  **Base Image:** Use `python:3.12-slim`.
 2.  **Working Directory:** Set it to `/workspace`.
-3.  **System Dependencies:** You will need to `RUN apt-get update` and install `build-essential`. 
-    * Clean the apt cache in the same `RUN` command to keep the image small. 
-```bash
-RUN apt-get update && apt-get install -y
---no-install-recommends build-essential 
-&& rm -rf /var/lib/apt/lists/*
-```
+3.  **System Dependencies:** Install the OS-level compiler tools required by Python data science libraries. You must clean the apt cache in the same step to keep the image small.
 4.  **Python Packages:** Create a `requirements.txt` file on your host machine containing: `numpy`, `pandas`, `scikit-learn`, `matplotlib`, and `jupyterlab`. Copy this into your image and `pip install` it.
-5.  **Security:** Create a non-root user named `developer` and switch to it.
+5.  **Security:** Create a non-root user named `developer`, give them ownership of the `/workspace` folder, and switch to that user.
 6.  **Network:** Expose port `8888`.
 7.  **Startup:** The container should run Jupyter Lab on `0.0.0.0` without trying to open a browser window. 
-* *Hint*: 
-```Dockerfile 
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888",
-"--no-browser", "--NotebookApp.token='lab123'"]
-```
 
 **Your Mission:** Write the `Dockerfile`, build the image (tagged with your Docker Hub username), and test it locally.
+
+::: {.callout-tip icon="false"}
+## HINTS.TXT — Group A Syntax Guide
+
+* **Installing System Packages & Clearing Cache:**
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+```
+* **Creating a Non-Root User:**
+```dockerfile
+RUN useradd --create-home --shell /bin/bash developer && chown -R developer:developer /workspace
+USER developer
+```
+* **Jupyter Startup Command:**
+```dockerfile
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token='lab123'"]
+```
+:::
+
 ---
 
 ### GROUP B: The Generative Art API
@@ -162,13 +168,28 @@ if __name__ == "__main__":
 **The Specifications:**
 
 1.  **Base Image:** Use `python:3.12-slim`.
-2.  **Dependencies:** You need `flask` and `pillow` in your `requirements.txt`.
-3.  **Security:** Create a non-root user named `appuser` and switch to it before running the app. 
-4.  **Configuration:** Use the `ENV` keyword in your `Dockerfile` to set default environment variables: `MODE="noise"` and `SIZE="256"`.
-5.  **Network:** The app runs on port `5000`. Expose it.
-6.  **Startup:** Run `python server.py`.
+2.  **Working Directory:** Set it to `/app`.
+3.  **Dependencies:** You need `flask` and `pillow` in your `requirements.txt`. Copy your requirements and `server.py` into the container and install the dependencies.
+4.  **Security:** Create a non-root user named `appuser`, give them ownership of the `/app` folder, and switch to them before running the app. 
+5.  **Configuration:** Set default environment variables: `MODE="noise"` and `SIZE="256"`.
+6.  **Network:** The app runs on port `5000`. Expose it.
+7.  **Startup:** Run `python server.py`.
 
 **Your Mission:** Write the `Dockerfile`, build the image (tagged with your Docker Hub username), and verify you can view the art in your browser at `localhost:5000/art.png`.
+
+::: {.callout-tip icon="false"}
+## HINTS.TXT — Group B Syntax Guide
+
+* **Creating a Non-Root User:**
+```dockerfile
+RUN useradd --create-home --shell /bin/bash appuser && chown -R appuser:appuser /app
+USER appuser
+```
+* **Setting Environment Variables:**
+```dockerfile
+ENV MODE="noise"
+```
+:::
 
 ------------------------------------------------------------------------
 
