@@ -1,0 +1,486 @@
+---
+title: "Jetstream2 and the Academic Cloud"
+---
+
+::: {.callout-note collapse="false"}
+## agenda.txt — Today’s plan
+
+-   Today, we'll discuss a cloud computing resource called Jetstream2 at Indiana University (JS2 for short).
+-   JS2 is an alternative to public cloud platforms like AWS or GCP primarily geared toward the academic and research communities.
+-   Although it lacks some of the capacity and features of the large cloud platforms, it is a powerful and versatile resource that we can use for free!
+-   Today, I'll walk through creating a Python based web application that runs on Jetstream2.
+
+![Jetstream2 Logo](images/JS2-Logo-Transparent.png){fig-align="center" width="384"}
+
+**Topics:**
+
+1.  **The Infrastructure**: Jetstream2, VMs, and Firewalls
+2.  **The Environment**: `uv`, Numba, and FastAPI
+3.  **The Application**: Compiling math to C-speeds and serving interactive HTML
+4.  **Productionizing**: Systemd Daemons and Caddy Reverse Proxies
+5.  **GitOps**: Automating deployments with GitHub Actions
+:::
+
+## Why this lecture exists
+
+::: {.callout-important collapse="false"}
+## scale.nfo – Deploying a More Complex App
+
+Main ideas:
+
+- Show how to use an academic cloud service that can be used for free
+- JS2 has some similarities to GCP, which we'll discuss in depth later
+- We'll deploy CPU bound app that would cost money on many cloud services for free
+:::
+
+------------------------------------------------------------------------
+
+## Part 0: Welcome to the Academic Cloud
+
+::: {.callout-note collapse="false"}
+## academic_cloud.doc — What is Jetstream2?
+
+Before we spin up servers, we need to know where we are building. We aren't using Amazon Web Services (AWS) or Google Cloud today. We are using **Jetstream2**, a national cloud funded by the **National Science Foundation (NSF)**.
+
+Think of it as a public utility for science. Researchers use it to:
+
+-   Host scientific gateways and dashboards.
+-   Run heavy wildfire or glacier melt simulations.
+-   Access high-end GPUs for machine learning.
+:::
+
+::: {.callout-tip collapse="false"}
+## comparison.tbl — Jetstream2 vs. Commercial Cloud
+
+Why start here instead of GCP or AWS?
+
+| Feature | **Jetstream2** | **AWS / GCP / Azure** |
+|:----------------------|:----------------------|:-------------------------|
+| **Cost** | **Free** (Funded by grants/ACCESS). No surprise bills. | Pay-per-minute. Easy to accidentally rack up a \$2,000 bill. |
+| **Interface** | **Exosphere**: Stripped down, simple, focuses on core VMs. | Tons of features,  but complex. 200+ services competing for your attention. |
+| **Purpose** | Scientific research and education. | Scaling massive corporate enterprises (like Netflix). |
+
+*By learning here, you learn the exact same fundamental Linux and networking skills required for GCP, but in a safe, researcher-friendly sandbox.*
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: What We're Building
+
+::: {.callout-tip collapse="false"}
+## demo.url — The Fractal Explorer
+
+Before we build it, feel free to check it out on your laptop or phone. 
+
+**[Live Demo: Interactive Mandelbrot Explorer](https://149.165.173.117.nip.io/)** <br/>
+**[GitHub Repo](https://github.com/Cloud-Course-Spring-2026/fractalize)**
+
+
+- This isn't a pre-rendered video or a static image. 
+- Every time you click to zoom, your browser asks our server to calculate the color of 480,000 individual pixels using, compile it into a PNG image, and send it back over the internet in milliseconds.
+- You can run this on your phone because JS2 does the heavy processing
+:::
+
+
+
+::: {.callout-important collapse="false"}
+## serverless.nfo — Why not use Vercel or Firebase?
+
+You might be wondering: *Can't I just deploy this for free on Vercel, Netlify, or Firebase?* 
+
+The answer is this is not an ideal application for these PaaS options.  Understanding *why* is a crucial lesson in cloud architecture. Free serverless platforms are typically designed for **I/O-bound** tasks (fetching JSON from a database). Our app is **CPU-bound**. 
+
+1. **CPU Limits:** Serverless free tiers give you a tiny fraction of a shared CPU core. Our math would take 10+ seconds per click or crash the container entirely.
+2. **The "Cold Start" Penalty:** Serverless functions go to sleep when no one is using them. Our Python code uses a "Just-In-Time" compiler (Numba) to reach C-speeds. On Vercel, the server would have to recompile the heavy math engine every time a new user clicks, destroying the snappy UI.
+3. **Payload Limits:** Packaging Python, NumPy, FastAPI, and LLVM compilers easily exceeds the strict 250MB size limits of free serverless deployments.
+
+> **The Takeaway:** Serverless is incredible for frontends and lightweight APIs. But when you need to do heavy computing (Machine Learning, Simulations, High-Performance Math), you must transition to Dedicated Servers like Jetstream2 or AWS EC2.
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: The Infrastructure Setup
+
+
+::: {.callout-note collapse="false"}
+## connect.sh — Booting Up
+
+1. Provision an Ubuntu 22.04 or 24.04 instance in Exosphere.
+2. Ensure it has a **Public IP Address** attached.
+3. SSH into your instance from your terminal:
+
+```bash
+ssh exouser@<YOUR_PUBLIC_IP>
+```
+*(Run `whoami` when you log in. Depending on the image, your user might be `exouser` or `ubuntu`!)*
+:::
+
+::: {.callout-warning collapse="false"}
+## firewall.rules — Opening the Doors
+
+By default, the JS2 blocks all traffic to protect your server. To build a web server, we need to open specific ports in the Jetstream2 Security Groups settings (set Remote CIDR to `0.0.0.0/0`):
+
+1.  **Port 22 (TCP):** For SSH (Remote control from your laptop).
+2.  **Port 80 (TCP):** For HTTP (Needed for Let's Encrypt to verify our SSL).
+3.  **Port 443 (TCP):** For HTTPS (Secure web traffic).
+4.  **Port 8000 (TCP):** For testing our Python app locally before we proxy it.
+:::
+
+------------------------------------------------------------------------
+
+## Part 3: The Application Engine
+
+::: {.callout-tip collapse="false"}
+## package_manager.exe — Enter `uv`
+
+We are going to use `uv` to handle our virtual environments and dependencies.
+
+```bash
+# 1. Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Scaffold the project
+mkdir fractalize
+cd fractalize
+uv init
+
+# 3. Install our high-performance stack
+uv add fastapi "uvicorn[standard]" numpy numba pillow
+```
+:::
+
+::: {.callout-note collapse="false"}
+## fractal.py — The Math Engine
+
+Create `fractal.py`. This calculates the Mandelbrot set using the escape time algorithm ($z = z^2 + c$). 
+
+Notice the `@jit` decorator. This is `numba`. It compiles the Python loop into machine code at runtime, giving it performance closer to C than Python. 
+
+```python
+import numpy as np
+from numba import jit
+
+@jit(nopython=True, fastmath=True)
+def compute_mandelbrot(height, width, x_min, x_max, y_min, y_max, max_iter):
+    # Create an empty image array (Height x Width)
+    img = np.zeros((height, width), dtype=np.uint8)
+    
+    # Calculate step sizes
+    dx = (x_max - x_min) / width
+    dy = (y_max - y_min) / height
+    
+    # Loop over pixels (JIT-compiled by numba)
+    for y in range(height):
+        for x in range(width):
+            # Map pixel coordinate to complex plane
+            c_r = x_min + x * dx
+            c_i = y_min + y * dy
+            z_r = 0.0
+            z_i = 0.0
+            
+            # Escape time algorithm
+            for i in range(max_iter):
+                # z = z^2 + c
+                # (a+bi)^2 = a^2 - b^2 + 2abi
+                temp_r = z_r*z_r - z_i*z_i + c_r
+                z_i = 2*z_r*z_i + c_i
+                z_r = temp_r
+                
+                # Check escape condition |z| > 2 (z_r^2 + z_i^2 > 4)
+                if z_r*z_r + z_i*z_i > 4.0:
+                    # Simple coloring: map iterations to 0-255 brightness
+                    img[y, x] = int(255 * i / max_iter)
+                    break
+                    
+    return img
+
+```
+:::
+
+::: {.callout-note collapse="false"}
+## main.py — The Web Server
+
+Create `main.py`. This serves an interactive HTML UI and handles the image generation requests. Notice how we cast `raw_data` to a standard `int` to avoid `uint8` integer overflows when applying colors!
+
+```python
+from fastapi import FastAPI, Response
+from fastapi.responses import HTMLResponse
+from PIL import Image
+from io import BytesIO
+import numpy as np
+import fractal  # Import our numba module
+
+app = FastAPI()
+
+# Config
+WIDTH = 800
+HEIGHT = 600
+MAX_ITER = 64
+
+@app.get("/")
+def index():
+    # Simple UI to display the image and handle clicks
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Fractal Explorer</title>
+        <style>
+            body { background: #1a1a1a; color: white; text-align: center; font-family: sans-serif; }
+            canvas { border: 1px solid #555; cursor: crosshair; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        </style>
+    </head>
+    <body>
+        <h2>Mandelbrot Explorer</h2>
+        <p>Click to Zoom In | Right Click to Zoom Out | R to Reset</p>
+        <img id="view" src="/render?xmin=-2.5&xmax=1.5&ymin=-1.5&ymax=1.5" width="800" height="600" />
+        
+        <script>
+            const initialState = { xmin: -2.5, xmax: 1.5, ymin: -1.5, ymax: 1.5 };
+            let state = { ...initialState };
+            const img = document.getElementById('view');
+
+            function update() {
+                img.src = `/render?xmin=${state.xmin}&xmax=${state.xmax}&ymin=${state.ymin}&ymax=${state.ymax}&t=${Date.now()}`;
+            }
+
+            function getClickCoords(e) {
+                // Calculate where user clicked relative to image
+                const rect = img.getBoundingClientRect();
+                const xPct = (e.clientX - rect.left) / rect.width;
+                const yPct = (e.clientY - rect.top) / rect.height;
+
+                // Map to complex coordinates
+                const xWidth = state.xmax - state.xmin;
+                const yHeight = state.ymax - state.ymin;
+                const clickX = state.xmin + (xPct * xWidth);
+                const clickY = state.ymin + (yPct * yHeight);
+                return { clickX, clickY, xWidth, yHeight };
+            }
+
+            img.addEventListener('click', (e) => {
+                const { clickX, clickY, xWidth, yHeight } = getClickCoords(e);
+
+                // Zoom in (0.5x scale)
+                const newWidth = xWidth * 0.5;
+                const newHeight = yHeight * 0.5;
+
+                state.xmin = clickX - newWidth / 2;
+                state.xmax = clickX + newWidth / 2;
+                state.ymin = clickY - newHeight / 2;
+                state.ymax = clickY + newHeight / 2;
+                
+                update();
+            });
+
+            img.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const { clickX, clickY, xWidth, yHeight } = getClickCoords(e);
+
+                // Zoom out (2x scale)
+                const newWidth = xWidth * 2.0;
+                const newHeight = yHeight * 2.0;
+
+                state.xmin = clickX - newWidth / 2;
+                state.xmax = clickX + newWidth / 2;
+                state.ymin = clickY - newHeight / 2;
+                state.ymax = clickY + newHeight / 2;
+
+                update();
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'r' || e.key === 'R') {
+                    state = { ...initialState };
+                    update();
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+@app.get("/render")
+def render(xmin: float, xmax: float, ymin: float, ymax: float):
+    # 1. Run the Number Cruncher
+    # We use numpy to create a colorful image from the raw iteration counts
+    raw_data = fractal.compute_mandelbrot(HEIGHT, WIDTH, xmin, xmax, ymin, ymax, MAX_ITER)
+    
+    # 2. Colorize (Apply a simple "Hot" colormap)
+    # This turns our 2D array into a 3D array (H, W, 3) for RGB
+    # PIL expects uint8 for an RGB image (H, W, 3). Using int32 raises:
+    # TypeError: Cannot handle this data type: (1, 1, 3), <i4
+    image_rgb = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
+    image_rgb[..., 0] = raw_data  # Red channel
+    image_rgb[..., 1] = raw_data * 2  # Green channel
+    image_rgb[..., 2] = raw_data * 4  # Blue channel
+
+    # 3. Convert to PNG
+    img = Image.fromarray(image_rgb, mode="RGB")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    
+    return Response(content=buf.getvalue(), media_type="image/png")
+```
+:::
+
+------------------------------------------------------------------------
+
+## Part 4: Productionizing (Daemons & Proxies)
+
+Running a script in a terminal is fragile. If the terminal closes, the app dies. Let's make it a permanent background service.
+
+::: {.callout-important collapse="false"}
+## daemon.service — The Systemd Service
+
+Create a configuration file to manage our app:
+```bash
+sudo nano /etc/systemd/system/fractalize.service
+```
+
+```ini
+[Unit]
+Description=Fractalize Web Server
+After=network.target
+
+[Service]
+User=exouser
+Group=exouser
+WorkingDirectory=/home/exouser/fractalize
+ExecStart=/home/exouser/fractalize/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start it:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable fractalize
+sudo systemctl start fractalize
+```
+:::
+
+
+
+::: {.callout-note collapse="false"}
+## proxy.conf — HTTPS and Caddy
+
+We shouldn't expose port 8000 directly. We want a real `https://` address. We will use Caddy as our web server and a magic domain called `nip.io`.
+
+```bash
+# 1. Install Caddy
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install caddy
+
+# 2. Configure the Caddyfile
+sudo nano /etc/caddy/Caddyfile
+```
+
+*Replace the contents with this (use your actual IP):*
+```text
+YOUR_IP_ADDRESS.nip.io {
+    reverse_proxy localhost:8000
+}
+```
+
+Restart Caddy: `sudo systemctl restart caddy`. 
+:::
+
+::: {.callout-tip collapse="false"}
+## wildcard.dns — The Magic of nip.io
+
+*Why are we using this weird `.nip.io` address instead of just typing our IP address into the browser with `https://`?*
+
+To get a security certificate, we need a Domain Name (like `google.com`), not just a raw IP address. Buying one for a lab is a hassle. `nip.io` is a free "Wildcard DNS" service. 
+
+It is programmed with a simple rule: Whatever IP address is embedded in the URL is exactly where it sends the traffic. If you type `https://149.165.15.20.nip.io`, the `nip.io` servers instantly tell your browser, "Go to `149.165.15.20`." It tricks the internet into treating our raw IP address as a legitimate domain name!
+:::
+
+
+
+::: {.callout-note collapse="false"}
+## encryption.key — What is HTTPS Actually Doing?
+
+**The Problem with HTTP:** Standard HTTP sends data in "plaintext." Anyone sitting on the same Wi-Fi network can intercept and read exactly what you are sending.
+
+**The Solution (HTTPS):** HTTPS wraps our web traffic in an unbreakable mathematical vault:
+
+1. **Asymmetric Encryption (The Handshake):** Your browser connects, and the server hands it a **Public Key** (a digital padlock) while keeping a **Private Key** hidden. Your browser uses the Public Key to lock a secret message (a session key) and sends it to the server. The server uses its Private Key to unlock it.
+2. **Symmetric Encryption (The Conversation):** Now that both securely share this Session Key, they use it to lock and unlock the rest of the conversation extremely quickly. 
+
+Caddy handles all of this automatically in the background using a free authority called Let's Encrypt!
+:::
+
+------------------------------------------------------------------------
+
+## Part 5: Continuous Deployment (GitOps)
+
+We want the server to update automatically when we push code to GitHub. 
+
+::: {.callout-warning collapse="false"}
+## security.key — The Deployment Key
+
+On your server (or laptop), generate an SSH key specifically for GitHub:
+```bash
+ssh-keygen -t ed25519 -C "github-actions" -f github_deploy_key
+```
+- Copy the contents of `github_deploy_key.pub` into `~/.ssh/authorized_keys` on your Jetstream2 server.
+- Copy the **entire** private key (`github_deploy_key`), including the `-----BEGIN...` and `-----END...` lines, to your clipboard.
+:::
+
+::: {.callout-note collapse="false"}
+## secrets.env — GitHub Secrets
+
+Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**. Add these 3 Repository Secrets:
+
+- `HOST`: Your server's public IP.
+- `USERNAME`: `exouser`
+- `SSH_KEY`: Paste the *entire* private key.
+:::
+
+::: {.callout-tip collapse="false"}
+## deploy.yml — The Workflow File
+
+In your repository, create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to Jetstream?
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # 1. Go to the project directory
+            cd /home/exouser/fractalize
+            
+            # 2. Pull the latest code from GitHub
+            git pull origin main
+            
+            # 3. Update dependencies (using full path to uv)
+            # This ensures if you add a new library, the server installs it
+            /home/exouser/.local/bin/uv sync
+            
+            # 4. Restart the systemd service to pick up changes
+            sudo systemctl restart fractalize
+```
+
+- **Push:** Commit your code and push it to GitHub. 
+- Watch the **Actions** tab in your repository. Once the job turns green, your server has updated itself!
+:::
