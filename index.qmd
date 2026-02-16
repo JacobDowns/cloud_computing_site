@@ -10,20 +10,28 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 
 :::
 
-## Navigation
+## Sections
+
+- [Lectures](#lectures) • [Labs](#labs) • [Homeworks](#homeworks)
+
+## Lectures ([all](lectures.qmd)) {#lectures}
 
 - [Lecture 1 — Cloud Big Picture](lecture1/index.qmd)
 - [Lecture 2 — Firebase Deployment](lecture2/index.qmd)
-- [Lab 1 — Deploying a Simple App](lab1/index.qmd)
 - [Lecture 3 — Web Fundamentals](lecture3/index.qmd)
 - [Lecture 4 — Authentication + Firestore](lecture4/index.qmd)
-- [Lab 2 — Notes App](lab2/index.qmd)
 - [Lecture 5 — Git and GitHub](lecture5/index.qmd)
-- [Lab 3 — Forks, Pull Requests, Conflict Resolution](lab3/index.qmd) 
 - [Lecture 6 — GitHub Actions](lecture6/index.qmd)
-- [Homework 1 — The Gatekeeper](homework1/index.qmd)
 - [Lecture 7 — Docker](lecture7/index.qmd)
-- [Lab 4 — Dockerfile Swap](lab4/index.qmd)
 - [Lecture 8 — Jetstream2 (Research Cloud)](lecture8/index.qmd)
 
+## Labs ([all](labs.qmd)) {#labs}
 
+- [Lab 1 — Deploying a Simple App](lab1/index.qmd)
+- [Lab 2 — Notes App](lab2/index.qmd)
+- [Lab 3 — Forks, Pull Requests, Conflict Resolution](lab3/index.qmd)
+- [Lab 4 — Dockerfile Swap](lab4/index.qmd)
+
+## Homeworks ([all](homeworks.qmd)) {#homeworks}
+
+- [Homework 1 — The Gatekeeper](homework1/index.qmd)

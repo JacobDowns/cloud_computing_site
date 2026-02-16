@@ -7,7 +7,13 @@ website:
   navbar:
     left:
       - href: index.qmd
-        text: Home 
+        text: Home
+      - href: lectures.qmd
+        text: Lectures
+      - href: labs.qmd
+        text: Labs
+      - href: homeworks.qmd
+        text: Homeworks
 
 format:
   html:

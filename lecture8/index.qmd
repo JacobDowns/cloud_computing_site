@@ -1,5 +1,5 @@
 ---
-title: "Jetstream2 and the Academic Cloud"
+title: "Lecture 8 — Jetstream2 and the Academic Cloud"
 ---
 
 ::: {.callout-note collapse="false"}

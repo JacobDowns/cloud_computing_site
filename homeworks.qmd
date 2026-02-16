@@ -1,0 +1,14 @@
+---
+title: "Homeworks"
+toc: false
+listing:
+  contents: "homework*/index.qmd"
+  sort: "path"
+  type: table
+  fields: [title]
+  field-links: [title]
+  field-display-names:
+    title: ""
+  filter-ui: false
+  sort-ui: false
+---
