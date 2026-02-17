@@ -484,3 +484,12 @@ jobs:
 - **Push:** Commit your code and push it to GitHub. 
 - Watch the **Actions** tab in your repository. Once the job turns green, your server has updated itself!
 :::
+
+
+::: {.callout-note collapse="false"}
+## init.exe — Try It Yourself
+
+- To get started using Jetstream2, you can connect your NSF access account to Jetstream2 
+- After logging in with your NSF ACCESS credentials, you'll be able to create your own, personal VM. 
+- See this for details on [logging in](https://docs.jetstream-cloud.org/getting-started/login/#click-add-allocation)
+:::
