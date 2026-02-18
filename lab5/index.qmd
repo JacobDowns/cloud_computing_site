@@ -1,0 +1,372 @@
+---
+title: "Lab 5 — The Wildfire Simulator"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — Today's Objective
+
+In our last lecture, we built a server from scratch. Today, you are doing it yourself. You will deploy a high-performance **Cellular Automata Wildfire Simulator**. 
+
+Because writing the code is not the focus of this DevOps lab, the application code has been written for you. Your job is to act as the Cloud Engineer: provision the server, secure it, run the application, and automate the deployment pipeline.
+
+**Deliverables:**
+
+1. A live `nip.io` URL to your animated simulator.
+2. A link to your forked GitHub repository.
+:::
+
+
+## Part 0: Prerequisites
+
+* Before getting started you'll need to have provided me with you **ACCESS ID**
+* In your user profile for NSF ACCESS, be sure the you set your **country of residence**
+* Jetstream2 is particular about this
+
+
+
+------------------------------------------------------------------------
+
+## Part 1: Tools
+
+Before we can touch the cloud, your local machine needs to be equipped to talk to it. You will need an SSH client and a code editor capable of remote connection.
+
+::: {.callout-tip collapse="true"}
+## install_windows.exe — Setup for Windows Users
+
+Modern Windows 10 and 11 come with OpenSSH pre-installed, but let's verify.
+
+1. Press the Windows Key, type `PowerShell`, and open it.
+2. Type `ssh` and press Enter. If you see a list of commands, you are good to go!
+3. *If it says "command not found":* Go to Settings -> Apps -> Optional Features -> Add a feature -> Search for "OpenSSH Client" and install it.
+
+**Terminal Warning:** For this entire lab, **only use PowerShell**, do not use the old `cmd.exe` Command Prompt.
+:::
+
+::: {.callout-tip collapse="true"}
+## install_mac_linux.sh — Setup for Mac / Linux Users
+
+You are already good to go! Unix-based systems have SSH built directly into the kernel environment. 
+
+* Simply open your `Terminal` application (Mac) or your default terminal emulator (Linux).
+:::
+
+::: {.callout-note collapse="false"}
+## vscode.exe — The Recommended Remote SSH Extension
+
+- Writing code through a raw terminal using `nano` is great for quick edits, but terrible for actual development. 
+- If you are a VS Code user, I would recommend adding the remote SSH extension to securely edit files directly on our Jetstream2 server.
+
+1. Open **VS Code** on your laptop.
+2. Go to the **Extensions** tab (the four squares icon on the left).
+3. Search for and install **Remote - SSH** (published by Microsoft).
+4. You will now see a small green "><" icon in the very bottom left corner of your VS Code window. We will use this later to connect!
+:::
+
+
+
+------------------------------------------------------------------------
+
+## Part 2: The Code and The Keys
+
+::: {.callout-note collapse="false"}
+## fork_repo.bat — Claiming the Code
+
+I have written the FastAPI web server and the Numba math engine for you. You need to create your own copy of it so you can deploy it.
+
+1. Go to the provided GitHub link for the [**Wildfire Simulator Template**](https://github.com/Cloud-Course-Spring-2026/wildfire).
+2. Click the **"Fork"** button.
+3. Save it to your own GitHub account. This is the repository you will be working from today.
+:::
+
+::: {.callout-warning collapse="false"}
+## keygen.dll — Generating SSH Keys
+
+Before we talk to the cloud, we need to generate two sets of cryptographic keys. 
+
+1. **The Admin Key (`jetstream2`):** This lets your laptop securely log into the server.
+2. **The Deploy Key (`github_deploy_key`):** This lets GitHub Actions log into the server to push automated code updates.
+
+
+
+**What does `ssh-keygen` do?**
+Every time you run the `ssh-keygen` command, it generates **two** linked files:
+
+* A **Private Key** (e.g., `jetstream2`): This is the physical "key". It stays securely on your laptop (or in GitHub's secret vault). You never share this.
+* A **Public Key** (e.g., `jetstream2.pub`): This is the "padlock". You give this to the Jetstream2 server. The server can now be unlocked by anyone holding the matching Private Key.
+
+Open your local terminal (PowerShell or Mac/Linux Terminal) and run these two commands. Press `Enter` through all the prompts and leave the passphrases empty:
+
+**1. Create your Admin Key:**
+```bash
+ssh-keygen -t ed25519 -C "admin-key" -f ~/.ssh/jetstream2
+```
+
+**2. Create your GitHub Deploy Key:**
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_deploy_key
+```
+
+**3. Copy your Admin Public Key:**
+You need to copy the contents of `jetstream2.pub` to your clipboard so we can give it to the Jetstream2 dashboard in the next step. You have two options for how to do this:
+
+**Option A: The Manual Way**
+Open the file in a text editor (like VS Code or Notepad), highlight all the text, and copy it.
+
+* Mac/Linux path: `~/.ssh/jetstream2.pub`
+* Windows path: `C:\Users\YourName\.ssh\jetstream2.pub`
+
+**Option B: The Terminal Way**
+Run the command below for your specific operating system to silently copy the file's contents directly to your clipboard:
+
+* **Mac:** `pbcopy < ~/.ssh/jetstream2.pub`
+* **Windows (PowerShell):** `cat ~/.ssh/jetstream2.pub | clip`
+* **Linux:** `cat ~/.ssh/jetstream2.pub` *(This will print it to the screen; highlight and copy it with your mouse).*
+:::
+
+------------------------------------------------------------------------
+
+## Part 3: Provisioning the Cloud
+
+::: {.callout-note collapse="false"}
+## exosphere.sys — Booting the Jetstream2 VM
+
+1. Log into Jetstream2 Exosphere.
+2. Go to **Create -> Instance**.
+3. Select **Ubuntu 22.04** or **24.04**. Select an `m3.small` flavor.
+4. Upload your Public Key:
+    - Under **Choose an SSH public Key**, click **Upload a new SSH public key**
+    - Paste your personal public key `jetstream2.pub` from the previous step (the one you copied to your clipboard earlier). 
+    - You can name it whatever you'd like. 
+5. You'll need to create a public IP address:
+    - Click **Show** under **Advanced Options**
+    - Under **Public IP Address** click **Assign a public IP address to this instance**
+6. It may take to a minute or two to provision the VM for your new instance. 
+:::
+
+
+
+::: {.callout-warning collapse="false"}
+## firewall.rules — Opening the Ports
+
+By default, the server rejects the internet. Go to your instance's **Security Groups** in Exosphere and open the following ports to `0.0.0.0/0`:
+
+- `22` (SSH - For you)
+- `80` (HTTP - For Let's Encrypt SSL verification)
+- `443` (HTTPS - For the web traffic)
+- `8000` (Testing port)
+:::
+
+------------------------------------------------------------------------
+
+## Part 4: Jacking In (Connecting to the Server)
+
+Now that our cloud server is running and the firewall is open, we need to log into it. 
+
+::: {.callout-warning collapse="false"}
+## terminal.exe — The Mandatory Handshake
+
+Open your local terminal (PowerShell or Mac/Linux Terminal). We are going to SSH into the server using the custom admin key (`jetstream2`) we generated earlier. 
+
+1. Run the following command (replace `<YOUR_PUBLIC_IP>` with your actual Jetstream2 IP):
+   ```bash
+   ssh -i ~/.ssh/jetstream2 exouser@<YOUR_PUBLIC_IP>
+   ```
+2. Because this is your first time connecting, SSH will stop and give you a warning:
+   `The authenticity of host '149.165... can't be established. Are you sure you want to continue connecting (yes/no/[fingerprint])?`
+3. Type **`yes`** and hit Enter. 
+
+- This saves the server's fingerprint to your laptop. Your command prompt should now change to something like `exouser@wildfire-vm:~$`. 
+- **You are now successfully jacked into the cloud!** You can complete the entire rest of the lab right here in this terminal.
+:::
+
+
+
+::: {.callout-tip collapse="true"}
+## vscode_remote.exe — Optional: Upgrade your interface (Highly Recommended)
+
+Using the raw terminal means you have to use a text-based editor like `nano` to edit files. If you want a visual, modern coding environment, you can configure VS Code to connect to your Jetstream2 server over SSH.
+
+Because we named our key `jetstream2` instead of the default name, we have to teach VS Code where to find it:
+
+1. In VS Code, click the green "><" icon in the bottom left corner.
+2. Select **Open SSH Configuration File...** -> Select your user's `config` file (usually the top option, ending in `/.ssh/config`).
+3. Add the following block of text to the file (use your actual IP address):
+   ```text
+   Host Jetstream2-Wildfire
+       HostName <YOUR_PUBLIC_IP>
+       User exouser
+       IdentityFile ~/.ssh/jetstream2
+   ```
+4. Save the file and close that tab.
+5. Click the green "><" icon again and select **Connect to Host...**
+6. Select **Jetstream2-Wildfire** from the list. (If it asks, the platform is "Linux").
+7. Once connected, open a terminal inside VS Code (`Ctrl + ~` or `Terminal -> New Terminal`). You can now edit files visually while running commands on the Jetstream2 server!
+:::
+
+::: {.callout-note collapse="false"}
+## setup.sh — The Environment
+
+Run these commands in your Jetstream2 terminal to download your code and install the ultra-fast `uv` package manager:
+
+```bash
+# 1. Install uv
+curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+source $HOME/.local/bin/env 
+
+# 2. Clone YOUR forked repository
+git clone <YOUR_FORKED_REPO>
+cd wildfire
+
+# 3. Sync dependencies
+uv sync
+```
+:::
+::: {.callout-important collapse="false"}
+## daemon.service — The Background Process
+
+We need our app to run forever, even after we close our terminal. We will create a background service.
+
+1. In your Jetstream2 terminal, run: `sudo nano /etc/systemd/system/wildfire.service`
+2. Paste this configuration:
+
+```ini
+[Unit]
+Description=Wildfire Simulator Web Server
+After=network.target
+
+[Service]
+User=exouser
+Group=exouser
+WorkingDirectory=/home/exouser/wildfire
+ExecStart=/home/exouser/wildfire/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+3. Save (`Ctrl+O`, `Enter`) and exit (`Ctrl+X`).
+4. Start the daemon:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable wildfire
+sudo systemctl start wildfire
+```
+:::
+
+::: {.callout-tip collapse="false"}
+## status.log — Checking the Pulse
+
+Before we add the secure proxy, let's verify that your Python app is actually running in the background. 
+
+1. In your terminal, check the status of your new daemon:
+   ```bash
+   sudo systemctl status wildfire
+   ```
+2. Look for the phrase **`active (running)`** in green text. *(Press `q` on your keyboard to exit this screen).*
+3. If it is running, open a new tab in your web browser and navigate directly to your raw IP address on port 8000:
+   
+   **`http://<YOUR_PUBLIC_IP>:8000`**
+
+*Note: Make sure to type `http://` and not `https://`. Your browser will warn you that this site is "Not Secure." That is completely normal because we haven't installed our SSL certificate yet. If you see the wildfire simulator, your backend engine is working perfectly!*
+:::
+
+
+
+::: {.callout-note collapse="false"}
+## caddy.conf — The Reverse Proxy
+
+Right now, our app is running on port 8000 without encryption. We will use Caddy as a reverse proxy to give it a secure `https://` address using our Wildcard DNS trick.
+
+```bash
+# 1. Install Caddy
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install caddy
+
+# 2. Configure Caddy
+sudo nano /etc/caddy/Caddyfile
+```
+
+Replace the entire contents of the file with the following (use your actual IP address):
+```text
+fire.<YOUR_IP_ADDRESS>.nip.io {
+    reverse_proxy localhost:8000
+}
+```
+
+Save and exit. Then restart the proxy: 
+```bash
+sudo systemctl restart caddy
+```
+**Test it:** Visit `https://fire.<YOUR_IP_ADDRESS>.nip.io` in your browser. You should now see the secure padlock icon!
+:::
+
+------------------------------------------------------------------------
+
+## Part 5: The GitOps Automation
+
+Finally, we teach GitHub to deploy updates automatically. Whenever you push new code to GitHub, a robot will SSH into your server, pull the latest code, sync the dependencies, and restart the background service.
+
+
+
+::: {.callout-warning collapse="false"}
+## auth.sys — Trusting the Robot
+
+We need to give the Jetstream2 server the public padlock for the deploy key you created earlier. 
+
+1. On your **Jetstream2 Server** terminal, open the authorized keys file:
+   `nano ~/.ssh/authorized_keys`
+2. On your **Local Laptop** terminal, view your public deploy key:
+   `cat ~/.ssh/github_deploy_key.pub`
+3. Copy the output from your laptop and paste it on a new line at the bottom of the server's `authorized_keys` file. Save and exit.
+:::
+
+::: {.callout-tip collapse="false"}
+## secrets.env — GitHub Configuration
+
+Now we give GitHub the private key so it can unlock the server.
+
+1. On your **Local Laptop** terminal, view the private key (Warning: this is a huge block of text):
+   `cat ~/.ssh/github_deploy_key`
+2. Copy the **entire** block, including `-----BEGIN` and `-----END`.
+3. Go to your repository on GitHub.com.
+4. Navigate to **Settings -> Secrets and variables -> Actions**.
+5. Add three new **Repository Secrets**:
+   * `HOST`: Your Jetstream2 public IP
+   * `USERNAME`: `exouser`
+   * `SSH_KEY`: Paste the giant private key block here.
+:::
+
+::: {.callout-note collapse="false"}
+## pipeline.yml — The Final Step
+
+In VS Code (or directly on GitHub.com), open your repository and ensure you have a file located at `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy Wildfire
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/exouser/wildfire
+            git pull origin main
+            /home/exouser/.local/bin/uv sync
+            sudo systemctl restart wildfire
+```
+
+**The Test:** Push a commit to GitHub (try changing the color of the fire in `main.py`). Watch the "Actions" tab on GitHub. Once it turns green, your server is officially self-updating! Submit your URLs to complete the lab.
+:::
