@@ -1,0 +1,259 @@
+---
+title: "Lecture 9 — A Stateful App and Security Concerns"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — Today's Objective
+
+-   In our last lab, we deployed a "stateless" Wildfire Simulator. If the server crashed, we lost nothing.
+-   Today, we are deploying a **stateful** collaborative map application. Users can click the map to drop pins and leave comments.
+-   Because user data is involved, we must ensure our SQLite database survives code updates and server reboots.
+-   We will achieve this by attaching a "cloud hard drive" (called a volume) to our instance. We will also learn how to host *both* apps on the same server using a reverse proxy.
+
+**Deliverables:**
+
+1.  A live URL (`map.<YOUR_IP>.nip.io`) pointing to your collaborative map.
+2.  At least one pin dropped on the map to prove the database is working.
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: Infrastructure & Security
+
+-   Instead of creating a new server, we are going to add this stateful map app to the Jetstream2 instance you built last time.
+-   Before we do, we should discuss some security concerns.
+
+![Serious looking security officer with cool shades.](images/womensecurity.jpg){fig-align="center"}
+
+::: {.callout-important collapse="false"}
+## security_brief.txt — The Reality of the Open Internet
+
+-   By default, Exosphere tries to be "helpful" by including a firewall rule that exposes **all incoming TCP ports** to the entire internet (`0.0.0.0/0`).
+-   In an academic sandbox, this reduces support tickets.
+-   In the real world, it is a catastrophic security violation.
+-   Hackers do not sit at their keyboards specifically targeting your student project. Instead, the internet is constantly swept by automated botnets and search engines (like [Shodan](https://www.bugcrowd.com/blog/shodan-the-search-engine-for-hackers/)).
+-   These scripts knock on every single port (all 65,535 of them) of every single IP address, 24/7. When they find an open door, they immediately attack.
+
+![It's fine to leave ports open, don't worry about it. ](images/this-is-fine.webp){fig-align="center"}
+
+Here is exactly what happens when you leave your ports exposed in a production environment:
+
+-   **Database Ransomware (The "Meow" Attack):**
+
+    > Developers often spin up test databases (like PostgreSQL on port 5432 or Redis on 6379) with default passwords. Botnets quickly find these, delete all the tables, and replace them with a single table containing a ransom note demanding Bitcoin.
+
+-   **Compute Hijacking (Crypto-Jacking):**
+
+    > Cloud servers have powerful CPUs. If you leave a Jupyter Notebook running on port 8888 without a password, or a Docker daemon exposed on 2375, a bot won't steal your data – it will quietly install a cryptocurrency miner. Your server's CPU will peg at 100%, ruining your app's performance and burning through your cloud budget.
+
+-   **Debug Mode Exploitation:**
+
+    > When building web apps (like FastAPI or Flask on port 8000), developers frequently run them in "Debug Mode" to catch errors. If an attacker hits an exposed port running in debug mode, they can intentionally trigger an error to access the interactive web debugger. This grants them Remote Code Execution (RCE), allowing them to take total control of the Linux machine.
+
+-   **The Blast Radius (Lateral Movement):**
+
+    > Your server doesn't exist in a vacuum; it sits inside a Virtual Private Cloud (VPC). If a hacker compromises your unsecured VM via a random open port, they now have a foothold *inside* the network.
+:::
+
+::: {.callout-warning collapse="false"}
+## firewall.rules — The Principle of Least Privilege
+
+* Because we are now hosting user data (map pins) on a persistent volume, a compromised server means permanent data loss. 
+* We are going to practice the **Principle of Least Privilege**: treat the network as hostile and only open the exact doors the application requires to function.
+
+1.  In the Exosphere dashboard, go to your instance and click edit in **Firewall Rulesets**
+2.  Find the rule that says `Expose all incoming ports` (TCP, Any, `0.0.0.0/0`) and **Delete** it.
+3.  Manually add specific rules for the exact ports our web applications require. Set the "Remote CIDR" to `0.0.0.0/0` (anyone on the internet) for each:
+    -   `80` (HTTP - Required for Let's Encrypt SSL verification)
+    -   `443` (HTTPS - Required for secure web traffic)
+    -   `8001` (Our new testing port for the Map App)
+
+*(Note: Do not delete the default SSH port 22 rule, or you will permanently lock yourself out of your own server!)*
+:::
+
+::: {.callout-tip collapse="false"}
+## volume.drv — Attaching Persistent Storage
+
+If we save our database inside our application code folder, it will get wiped out the next time GitHub Actions deploys an update or if the instance is destroyed. We need a safe place to put it.
+
+1.  In Exosphere, navigate to **Volumes** and click **Create Volume**.
+2.  Name it `cloud` and give it a small size (e.g., 5GB).
+3.  Once created, click on the volume and select **Attach to Instance**. Choose your running Jetstream2 server.
+4.  Exosphere handles the hard work for us! It automatically formats the drive and mounts it to your server at this exact path: `/media/volume/cloud`.
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: Deploying the Application
+
+Use your terminal or VS Code to SSH into your Jetstream2 instance.
+
+::: {.callout-note collapse="false"}
+## setup.sh — Downloading the Code
+
+Run these commands to clone your forked repository and install the dependencies:
+
+``` bash
+# 1. Clone YOUR forked repository
+git clone https://github.com/Cloud-Course-Spring-2026/map
+cd map
+
+# 2. Sync dependencies
+/home/exouser/.local/bin/uv sync
+```
+:::
+
+::: {.callout-note collapse="false"}
+## sqlite3.dll — The Embedded Database
+
+In modern web development, there are generally two ways to store relational data:
+
+- **Client-Server Databases** (like PostgreSQL or MySQL) 
+- **Embedded Databases** (like SQLite). 
+- For our Map App, we are using **SQLite**. 
+- Unlike Postgres, SQLite does not run as a background service or require its own port. It is entirely self-contained within a standard C library. 
+- The "database" is literally just a single file on your hard drive (in our case, `map_data.db`).
+
+**Why Use SQLite Here?**
+
+1. **Zero Configuration:** There are no usernames, passwords, or network protocols to configure.
+2. **Portability:** If you want to back up your database, you literally just copy and paste the `map_data.db` file.
+3. **The DevOps Lesson:** Because the database is just a file, if that file is saved inside your application folder, it will be deleted the next time GitHub Actions deploys new code. This perfectly demonstrates why cloud applications require **Persistent Volumes** (external cloud hard drives) to store state safely!
+:::
+
+::: {.callout-tip collapse="false"}
+## sqlmodel.orm — Object-Relational Mapping
+
+If you look at `main.py`, you will notice we don't write any raw SQL strings like `INSERT INTO pins VALUES (...)`. Instead, we use a Python library called **SQLModel** (which is built on top of SQLAlchemy and Pydantic).
+
+This is called an **ORM** (Object-Relational Mapper). It translates standard Python classes directly into SQL database tables.
+
+```python
+# This Python class automatically creates the SQL table!
+class LocationPin(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    title: str
+    comment: str
+    lat: float
+    lng: float
+```
+
+When a user clicks the map, the Leaflet.js frontend sends a JSON payload to our FastAPI backend. FastAPI converts that JSON into a `LocationPin` Python object, and SQLModel automatically generates the correct, secure SQL command to save it into our `map_data.db` file on the persistent volume.
+:::
+
+::: {.callout-important collapse="false"}
+## daemon.service — The Stateful Background Process
+
+Since our Wildfire app is already using port `8000`, we will run the map app on port `8001`. More importantly, we must tell the application to save its database file inside our volume. We do this by passing an Environment Variable.
+
+1.  Run: `sudo nano /etc/systemd/system/mapapp.service`
+2.  Paste this configuration:
+
+``` ini
+[Unit]
+Description=Map Pin App Web Server
+After=network.target
+
+[Service]
+User=exouser
+Group=exouser
+WorkingDirectory=/home/exouser/map
+Environment="DB_PATH=/media/volume/cloud/map_data.db"
+ExecStart=/home/exouser/map/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3.  Save (`Ctrl+O`, `Enter`) and exit (`Ctrl+X`).
+4.  Start the new daemon:
+
+``` bash
+sudo systemctl daemon-reload
+sudo systemctl enable mapapp
+sudo systemctl start mapapp
+```
+:::
+
+::: {.callout-tip collapse="false"}
+## status.log — Checking the Pulse
+
+Verify that your Python app successfully connected to the volume and started up.
+
+1.  Run: `sudo systemctl status mapapp`
+2.  Look for **`active (running)`** in green text. *(Press `q` to exit).*
+3.  Open a browser tab and visit your raw IP on port 8001 to ensure the map loads: **`http://<YOUR_PUBLIC_IP>:8001`**
+:::
+
+------------------------------------------------------------------------
+
+## Part 3: The Traffic Cop
+
+We now have two apps running simultaneously (Wildfire on 8000, Map on 8001). We will use our reverse proxy to route traffic based on the URL the user types in.
+
+::: {.callout-note collapse="false"}
+## caddy.conf — Multi-Tenant Routing
+
+1.  Open your proxy configuration:
+
+    ``` bash
+    sudo nano /etc/caddy/Caddyfile
+    ```
+
+2.  Add a second block for your new `map` subdomain. Your file should look like this (use your actual IP address):
+
+``` text
+fire.<YOUR_IP_ADDRESS>.nip.io {
+    reverse_proxy localhost:8000
+}
+
+map.<YOUR_IP_ADDRESS>.nip.io {
+    reverse_proxy localhost:8001
+}
+```
+
+3.  Save and reload the proxy (using `reload` instead of `restart` ensures the Wildfire app doesn't drop any active connections!):
+
+    ``` bash
+    sudo systemctl reload caddy
+    ```
+
+**The Test:** Visit `https://map.<YOUR_IP_ADDRESS>.nip.io` in your browser. Drop a pin, refresh the page. The pin should be retained. 
+:::
+
+------------------------------------------------------------------------
+
+## Part 4: GitOps Automation
+
+::: {.callout-warning collapse="false"}
+## pipeline.yml — Automating the Map App
+
+Just like last time, we want GitHub Actions to handle deployments for us. Since you already added the Deploy Key to the server's `authorized_keys` file and set up your Secrets in GitHub during the Wildfire lab, you just need to add the workflow file to your Map repo!
+
+Ensure your repository has this file at `.github/workflows/deploy.yml`:
+
+``` yaml
+name: Deploy Map App
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/exouser/map
+            git pull origin main
+            /home/exouser/.local/bin/uv sync
+            sudo systemctl restart mapapp
+```
+:::
