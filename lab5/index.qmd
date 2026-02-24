@@ -130,7 +130,10 @@ Run the command below for your specific operating system to silently copy the fi
 ::: {.callout-note collapse="false"}
 ## exosphere.sys — Booting the Jetstream2 VM
 
-1. Log into Jetstream2 Exosphere.
+1. Log into [Jetstream2 Exosphere](https://jetstream2.exosphere.app/).
+
+> Note: You'll need to login with your NSF ACCESS credentials. The first time you login you'll need to click **Add allocation** and select our class allocation. 
+
 2. Go to **Create -> Instance**.
 3. Select **Ubuntu 22.04** or **24.04**. Select an `m3.small` flavor.
 4. Upload your Public Key:
@@ -141,19 +144,6 @@ Run the command below for your specific operating system to silently copy the fi
     - Click **Show** under **Advanced Options**
     - Under **Public IP Address** click **Assign a public IP address to this instance**
 6. It may take to a minute or two to provision the VM for your new instance. 
-:::
-
-
-
-::: {.callout-warning collapse="false"}
-## firewall.rules — Opening the Ports
-
-By default, the server rejects the internet. Go to your instance's **Security Groups** in Exosphere and open the following ports to `0.0.0.0/0`:
-
-- `22` (SSH - For you)
-- `80` (HTTP - For Let's Encrypt SSL verification)
-- `443` (HTTPS - For the web traffic)
-- `8000` (Testing port)
 :::
 
 ------------------------------------------------------------------------
@@ -172,6 +162,7 @@ Open your local terminal (PowerShell or Mac/Linux Terminal). We are going to SSH
    ssh -i ~/.ssh/jetstream2 exouser@<YOUR_PUBLIC_IP>
    ```
 2. Because this is your first time connecting, SSH will stop and give you a warning:
+
    `The authenticity of host '149.165... can't be established. Are you sure you want to continue connecting (yes/no/[fingerprint])?`
 3. Type **`yes`** and hit Enter. 
 
