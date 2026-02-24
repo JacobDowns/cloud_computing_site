@@ -37,3 +37,4 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 ## Homeworks ([all](homeworks.qmd)) {#homeworks}
 
 - [Homework 1 — The Gatekeeper](homework1/index.qmd)
+- [Project 1 — Choose Your Own Adventure](project1/index.qmd)

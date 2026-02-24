@@ -1,0 +1,93 @@
+---
+title: "Assignment 2: The Midterm Project"
+subtitle: "Cloud-Native Architecture: Choose Your Own Adventure"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — The Objective
+For your midterm project, you will architect, deploy, and secure a custom cloud-native application on Jetstream2. You have complete creative freedom over *what* your Python application does, provided it meets the infrastructure and security requirements below.
+:::
+
+------------------------------------------------------------------------
+
+## The Core Requirements (The Rubric)
+
+No matter which project track you choose, your infrastructure must demonstrate mastery of the following DevOps principles. 
+
+::: {.callout-important collapse="false"}
+## sys_check.exe — Grading Breakdown (100 Points Total)
+
+1. **Secured Perimeter (10%):** The Principle of Least Privilege must be enforced. Your Jetstream2 firewall must NOT have the default `0.0.0.0/0` "Expose all ports" rule. Only ports `80`, `443`, and `22` (and specific testing ports if actively needed) may be open.
+2. **GitOps Automation (20%):** No manual code updates. Your application must deploy automatically via a GitHub Actions CI/CD pipeline (`deploy.yml`) when code is pushed to your `main` branch.
+3. **Multi-Tenant Routing & SSL (20%):** Your app must be served securely over HTTPS using Caddy. It must be accessible via a custom `.nip.io` subdomain (e.g., `myproject.<YOUR_IP>.nip.io`).
+4. **Resilience (20%):** Your application must run continuously in the background managed by `systemd`. If the Jetstream2 instance reboots, your app must turn itself back on automatically, and any stateful data must survive. I will test this by rebooting your instance. 
+5. **Presentation & Peer Support (30%):** You must present your project to the class and actively attend your peers' presentations. (See details in the Deliverables section below).
+:::
+
+------------------------------------------------------------------------
+
+## The Project Tracks
+
+Choose one of the following three tracks based on your interests. 
+
+## The Project Tracks
+
+Choose one of the following three architectural tracks based on your interests. 
+
+### Track A: The Architect (Stateful Web App)
+Build a web application that takes in user data, saves it to a database, and displays it back to the user.
+
+> **Objective:** You must successfully format and mount a Jetstream2 volume so your database survives reboots and deployments.
+
+* **Ideas:** 
+1.  A personal video game or movie tracker where users can log what they've played/watched and leave a 1-10 rating.
+2.  A shared chore wheel or grocery list app for an apartment.
+3.  An app where students can drop a pin on a campus map whenever a club is giving away free pizza.
+
+### Track B: The Scientist (Heavy Compute / ML API)
+Build a stateless application that uses the Jetstream2 instance's compute power to run a heavy task, mathematical model, or machine learning inference.
+
+> **Objective:** Your web app acts as an API. The user submits data (like a photo, a block of text, or a CSV), your server processes it through a model, and returns the result.      
+
+* **Ideas:** 
+1. A sentiment analysis API where a user pastes a text message draft, and an NLP model scores whether it sounds passive-aggressive.
+2. A computer vision app where a user uploads a photo, and a PyTorch model applies an artistic filter (like making it look like a Van Gogh painting).
+
+### Track C: The Observer (Automated Data Pipeline)
+Build a system that automatically collects data on a schedule, stores it, and serves a live dashboard to the web.
+
+> **Objective:** You must configure a background task (like a Systemd Timer or a cron job) that runs your Python script independently of your web server to fetch new data daily/hourly.
+
+* **Ideas:** 
+1. A bot that checks the Steam API daily for specific games on your wishlist and updates a dashboard with current price drops.
+
+
+------------------------------------------------------------------------
+
+## Timeline & Deliverables
+
+This project is broken into two phases to ensure you aren't fighting cloud infrastructure bugs the night before it is due.
+
+::: {.callout-warning collapse="false"}
+## milestone_1.log — The Foundation (Due March 3)
+
+Create a GitHub file with a brief README.md describing what you'll create. 
+
+**Deliverable:** Submit your GitHub repository link with the completed README file. 
+:::
+
+::: {.callout-important collapse="false"}
+## milestone_2.exe — Live Presentations (March 10/12)
+
+Your application is fully built, styled, and functional. We will spend this class period doing live demonstrations.
+
+**Presentation Requirements (~10 Minutes):**
+
+* Show your live cloud based app to the class and demonstrate its functionality.
+* Briefly walk us through the underlying architecture (e.g., where does the data live, how does Caddy route it, or what ML model is running under the hood).
+* Explain any obstacles you ran into and how you resolved them. 
+
+**Attendance Requirement:**
+
+A significant portion of your grade for this milestone is tied to being an active, supportive audience member. You must be present in class to watch your peers present. 
+:::
