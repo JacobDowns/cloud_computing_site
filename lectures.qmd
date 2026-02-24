@@ -8,7 +8,7 @@ listing:
   fields: [title]
   field-links: [title]
   field-display-names:
-    title: ""
+    title: "List of all lectures."
   filter-ui: false
   sort-ui: false
 ---
