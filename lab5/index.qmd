@@ -96,15 +96,25 @@ Every time you run the `ssh-keygen` command, it generates **two** linked files:
 
 Open your local terminal (PowerShell or Mac/Linux Terminal) and run these two commands. Press `Enter` through all the prompts and leave the passphrases empty:
 
-**1. Create your Admin Key:**
-```bash
-ssh-keygen -t ed25519 -C "admin-key" -f ~/.ssh/jetstream2
-```
+* **Mac/Linux:**
+  ```bash
+  ssh-keygen -t ed25519 -C "admin-key" -f ~/.ssh/jetstream2
+  ```
+* **Windows (PowerShell):**
+  ```powershell
+  ssh-keygen -t ed25519 -C "admin-key" -f "$HOME\.ssh\jetstream2"
+  ```
 
 **2. Create your GitHub Deploy Key:**
-```bash
-ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_deploy_key
-```
+
+* **Mac/Linux:**
+  ```bash
+  ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_deploy_key
+  ```
+* **Windows (PowerShell):**
+  ```powershell
+  ssh-keygen -t ed25519 -C "github-deploy" -f "$HOME\.ssh\github_deploy_key"
+  ```
 
 **3. Copy your Admin Public Key:**
 You need to copy the contents of `jetstream2.pub` to your clipboard so we can give it to the Jetstream2 dashboard in the next step. You have two options for how to do this:
