@@ -277,3 +277,14 @@ details.callout > summary.callout-header:focus-visible {
   box-shadow: none !important;
   transform: translate(1px, 1px);
 }
+
+/* ---------------------------
+   Blockquotes
+   --------------------------- */
+
+blockquote,
+.blockquote,
+.blockquote p,
+.blockquote-footer {
+  color: #000 !important;
+}

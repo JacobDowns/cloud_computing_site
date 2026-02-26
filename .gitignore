@@ -4,6 +4,8 @@
 # Quarto internal
 /.quarto/
 **/*.quarto_ipynb
+/.cache/
+/.deno/
 
 # R
 .Rproj.user
