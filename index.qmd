@@ -25,7 +25,7 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 7 — Docker](lecture7/index.qmd)
 - [Lecture 8 — Jetstream2 (Research Cloud)](lecture8/index.qmd)
 - [Lecture 9 — Stateful App & Security Concerns](lecture9/index.qmd)
-- [Lecture 9 — OpenStack](lecture10/index.qmd)
+- [Lecture 10 — OpenStack](lecture10/index.qmd)
 
 ## Labs ([all](labs.qmd)) {#labs}
 
