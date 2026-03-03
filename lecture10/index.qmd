@@ -50,25 +50,25 @@ Openstack, AWS, and GCP have different names for similar technologies.
 -   AWS provides high-level "managed" tools (like click-to-deploy PostgreSQL databases or AI pipelines).
 -   OpenStack gives you the raw infrastructure—if you want a database, you must build the VM and configure the software yourself.
 
-> **Note:** OpenStack does not have all of the features of AWS or GCP, and OpenStack is not provide infrastructure like servers that you can use. OpenStack is like a cloud OS running on Jetstream2's data centers.
+> **Note:** OpenStack does not have all of the features of AWS or GCP. Additionally, unlike AWS or GCP, OpenStack is a software provider, and does not provide hardware.
 
 ------------------------------------------------------------------------
 
 ## Part 2: Beyond Exosphere (Broader Capabilities)
 
 -   Using the **Horizon Dashboard** (OpenStack's raw web GUI) or the **OpenStack CLI**, opens up a wealth of more advanced features.
--   These include more technical, enterprise grade features
+-   These include more technical, enterprise grade features like the ability to create private networks. 
 
 ::: {.callout-important collapse="false"}
 ## network.sys — Software-Defined Networking
 
 In Exosphere, you click "Create Instance" and it magically gets an IP address. In raw OpenStack, you can use **Neutron** to build highly complex, secure network topologies entirely through software.
 
--   **Custom Private Subnets:** You can create dedicated networks for different parts of your application. For example, you can build a `10.0.1.0/24` subnet strictly for your web servers, and a separate `10.0.2.0/24` subnet strictly for your databases.
+-   **Custom Private Subnets:** You can create dedicated networks for different parts of your application. For example, you can build subnet strictly for your web servers, and a separate subnet strictly for your databases.
 
--   **Isolated Environments:** You can create backend virtual machines that have **no public internet access whatsoever**. They cannot be reached by the outside world, making them virtually immune to external port-scanning bots.
+-   **Isolated Environments:** You can create backend virtual machines that have no public internet access whatsoever. They cannot be reached by the outside world, making them virtually immune to external port-scanning bots.
 
--   **Inter-VM Communication:** Instead of routing traffic out to the internet and back, your web server VM can talk directly to your database VM over the internal, lightning-fast private OpenStack network.
+-   **Inter-VM Communication:** Instead of routing traffic out to the internet and back, your web server VM can talk directly to your database VM over the internal, private OpenStack network.
 
 ## orchestration.exe — Advanced Fleet Management
 
@@ -91,7 +91,9 @@ Beyond just networking, OpenStack allows you to manage fleets of servers rather 
 
 -   This introduces the **OpenStack Command Line Interface (CLI)**. By authenticating our local terminal with Jetstream2, we can interact with the cloud entirely through code.
 
--   **The Paradigm Shift:** If a command can be typed, it can be scripted. Imagine you realize your default firewall rules are insecure and you need to apply a new Security Group to 30 different virtual machines. In a web UI, that takes an hour of tedious clicking. With the CLI, you can write a simple Bash loop:
+-   **The Paradigm Shift:** 
+- If a command can be typed, it can be scripted. Imagine you realize your default firewall rules are insecure and you need to apply a new Security Group to several different virtual machines (which actually happened in this class).
+- In a web UI, that takes a lot of tedious clicking. With the OpenStack CLI, you can write a simple Bash loop:
 
 ``` bash
 # Get all server IDs, loop through them, and apply the new firewall rule instantly
@@ -100,7 +102,7 @@ for server_id in $(openstack server list -c ID -f value); do
 done
 ```
 
-We won't be installing the CLI today, but understanding this paradigm—that the cloud is just an API waiting to receive commands—is the crucial stepping stone toward full DevOps automation.
+We won't be installing the CLI today, but understanding the idea that the cloud is just an API waiting to receive commands is the crucial stepping stone toward full DevOps automation.
 :::
 
 ------------------------------------------------------------------------
@@ -135,7 +137,7 @@ We are now going to bypass Exosphere entirely and interact directly with the Jet
 -   Notice we didn't have to create an instance to access this data or start a web server to serve it.
 -   If you are processing terabytes of climate data, you can drop it into an Object Store where any computer in the world can fetch it via a simple HTTP link, completely decoupled from your compute instances.
 
-![Object storage in the Horizon dashboard. ](images/object_storage.png){fig-align="center"}
+![Object storage in the Horizon dashboard.](images/object_storage.png){fig-align="center"}
 :::
 
 ::: {.callout-important collapse="false"}
