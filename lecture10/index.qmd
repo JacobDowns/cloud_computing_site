@@ -102,7 +102,7 @@ for server_id in $(openstack server list -c ID -f value); do
 done
 ```
 
-We won't be installing the CLI today, but understanding the idea that the cloud is just an API waiting to receive commands is the crucial stepping stone toward full DevOps automation.
+We won't be installing the CLI today, but understanding the idea that the cloud is just an API waiting to receive commands is the crucial stepping stone toward full DevOps automation.war
 :::
 
 ------------------------------------------------------------------------
