@@ -54,7 +54,7 @@ hcl resource "openstack_compute_instance_v2" "my_server" {
 -   Because Terraform is declarative, you'll usually run `terraform plan` before applying so you can double check teh execution plan.
 -   It will print a detailed list of exactly what it intends to create, modify, or destroy, ensuring you don't accidentally nuke the data center.
 
-![Terraform works with multiple cloud services. ](images/terraform.webp){fig-align="center"}
+![Terraform works with multiple cloud services.](images/terraform.webp){fig-align="center"}
 
 ------------------------------------------------------------------------
 
@@ -119,7 +119,7 @@ To use the OpenStack CLI and Terraform we need to generate proper credentials. T
 3.  Click **Create Application Credential**.
 4.  Name it `lab6-cli-key`.
 5.  **CRITICAL:** Check the box that says **Unrestricted**. (This allows Terraform to build networks).
-6. Nothing else needs to be filled out.
+6.  Nothing else needs to be filled out.
 7.  Click Create, then immediately click **Download openrc file**.
 8.  Save this `.sh` file to your lab folder.
 :::
@@ -128,36 +128,40 @@ To use the OpenStack CLI and Terraform we need to generate proper credentials. T
 
 ## Part 4: Installing the Tools & Testing the Pulse
 
-To control the cloud, your laptop needs the right command-line utilities. 
+To control the cloud, your laptop needs the right command-line utilities.
 
 ::: {.callout-tip collapse="false"}
 ## setup.bat — Local Installations
 
 **1. The OpenStack CLI (via `uv`)**
 
-- We will use `uv` to install the OpenStack client. 
-- Because we are using the `tool` command, `uv` will automatically create a safe, isolated environment in the background and link the command to your terminal. You do not need to run `uv init` or be in a specific folder. 
+-   We will use `uv` to install the OpenStack client.
+-   Because we are using the `tool` command, `uv` will automatically create a safe, isolated environment in the background and link the command to your terminal. You do not need to run `uv init` or be in a specific folder.
 
 Open your terminal and run:
-```bash
+
+``` bash
 uv tool install python-openstackclient
 ```
+
 *Verify it works by typing `openstack --version`.*
 
 **2. Terraform**
 
-- Terraform is a standalone binary. Instead of downloading it manually, we will use your system's package manager to install it directly from HashiCorp's official repositories.
+-   Terraform is a standalone binary. Instead of downloading it manually, we will use your system's package manager to install it directly from HashiCorp's official repositories.
 
 **For Mac users (using Homebrew):**
-```bash
+
+``` bash
 brew tap hashicorp/tap
 brew install hashicorp/tap/terraform
 ```
 
 **For Linux & Windows WSL users (Ubuntu/Debian):**
 
-- Run these commands one by one to add the HashiCorp repository and install Terraform:
-```bash
+-   Run these commands one by one to add the HashiCorp repository and install Terraform:
+
+``` bash
 sudo apt-get update && sudo apt-get install -y software-properties-common gnupg curl
 
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -170,10 +174,12 @@ sudo apt-get update && sudo apt-get install terraform
 **For Windows users:**
 
 If you use the Chocolatey package manger simply do:
-```powershell
+
+``` powershell
 choco install terraform
 ```
-Otherwise you'll need to download and install a binary and add Terraform to your path. 
+
+Otherwise you'll need to download and install a binary and add Terraform to your path.
 
 *Verify your installation works by typing `terraform -version`.*
 :::
@@ -181,36 +187,39 @@ Otherwise you'll need to download and install a binary and add Terraform to your
 ::: {.callout-important collapse="false"}
 ## terminal.sys — The Pulse Check
 
-Now that the tools are installed, let's load your API credentials into your terminal session so your laptop can authenticate with Jetstream2. 
+Now that the tools are installed, let's load your API credentials into your terminal session so your laptop can authenticate with Jetstream2.
 
 **For Mac and Native Linux Users:**
 
-- Open your terminal, navigate to the folder where you saved your credential file, and run:
-```bash
+-   Open your terminal, navigate to the folder where you saved your credential file, and run:
+
+``` bash
 source lab6-cli-key-openrc.sh
 ```
 
 **For Windows Users:**
 
-- The `.sh` file is a Linux script, so it will not work natively in the standard Command Prompt or PowerShell. 
+-   The `.sh` file is a Linux script, so it will not work natively in the standard Command Prompt or PowerShell.
 
 > *Pro-Tip: I highly recommend installing the **Windows Subsystem for Linux (WSL)**. It is the industry standard for cloud engineers using Windows. If you are using WSL, you are running genuine Ubuntu and can just use the Mac/Linux command above*
 
 If you are not using WSL currently, you have two fallback options:
 
-1. **(Git Bash):** Open the **Git Bash** terminal (installed with Git for Windows). Navigate to the file and run `source lab6-cli-key-openrc.sh`.
-2. **(PowerShell):** Open the `.sh` file in Notepad. You will see a list of `export` commands. You must manually translate them into PowerShell environment variables in your terminal like this:
-```powershell
+1.  **(Git Bash):** Open the **Git Bash** terminal (installed with Git for Windows). Navigate to the file and run `source lab6-cli-key-openrc.sh`.
+2.  **(PowerShell):** Open the `.sh` file in Notepad. You will see a list of `export` commands. You must manually translate them into PowerShell environment variables in your terminal like this:
+
+``` powershell
 $env:OS_APPLICATION_CREDENTIAL_ID="paste_your_id_here"
 $env:OS_APPLICATION_CREDENTIAL_SECRET="paste_your_secret_here"
 # Repeat for the other 5 variables in the file...
 ```
 
-**The Test:**
-Now, ask the Jetstream2 API for a list of all servers currently running in our project:
-```bash
+**The Test:** Now, ask the Jetstream2 API for a list of all servers currently running in our project:
+
+``` bash
 openstack server list
 ```
+
 You should see a massive ASCII table displaying your midterm server, my servers, and your classmates' servers! Your laptop has successfully breached the data center perimeter.
 :::
 
@@ -218,12 +227,14 @@ You should see a massive ASCII table displaying your midterm server, my servers,
 
 ## Part 5: Functional Infrastructure as Code
 
-- We are going to write a Terraform blueprint that tells OpenStack to build a brand new server. 
-- But we won't stop there. We will pass a `cloud-init` script via the `user_data` field. 
-- This tells the cloud to automatically install `nginx` and write a custom webpage as soon as the server turns on.
+-   We are going to write a Terraform blueprint that tells OpenStack to build a brand new server.
+-   But we won't stop there. We will pass a `cloud-init` script via the `user_data` field.
+-   This tells the cloud to automatically install `nginx` and write a custom webpage as soon as the server turns on.
 
 1.  Create a file called `main.tf` in a new `lab6` directory.
-2.  Paste the following code. **You MUST change the `name` field to include your initials or come up with a unique name!**
+2.  Paste the following code.
+
+> **Note:** You MUST change the `name` field to include your initials or come up with a unique name!
 
 ``` hcl
 terraform {
@@ -271,34 +282,48 @@ Run the following commands in order:
 2.  `terraform plan` *(Review the blueprint. It should say "1 to add")*
 3.  `terraform apply` *(Type 'yes' when prompted. Watch the server build!)*
 
-**The Test:** 
+**The Test:** Terraform will output an internal IP address (e.g., `10.0.0.X`). Because we didn't attach a public IP, you cannot view this in your laptop's browser. Instead, open the Exosphere Web Shell for your exsting VM in Exosphere and run: `curl <THAT_INTERNAL_IP>`
 
-- Terraform will output an internal IP address (e.g., `10.0.0.X`). 
-- Because we didn't attach a public IP, you cannot view this in your laptop's browser. Instead, open the Exosphere web shell for your existing instance in Exosphere
-- In web shell run: `curl <THAT_INTERNAL_IP>` 
-- You should see the raw HTML output of your custom Nginx page!
+**Did you get a "Connection Refused" error? Don't panic!**
 
-**The Cleanup:** Do not leave this server running. 
+This illustrates the difference between infrastructure provisioning ersus configuration:
 
-4. `terraform destroy` *(Type 'yes' to permanently delete the server and save our SU allocation).*
+-   **Provisioning (Terraform):** Terraform's only job is to ask OpenStack for virtual hardware. The exact millisecond OpenStack allocates the CPU and assigns the IP address, Terraform declares success and exits. This is incredibly fast (\~10 seconds).
+-   **Configuration (`cloud-init`):** However, inside the server, the Ubuntu operating system is still booting up. Your `user_data` script is quietly running in the background, updating packages, installing Nginx, and writing your HTML file. This can take more like 60 to 90 seconds.
+- If you run `curl` before Nginx finishes installing, the server's firewall instantly drops the connection. Take a breath, wait a minute or two, and try the command again. You should eventually see the raw HTML output of your custom Nginx page!
 
-Congratulations. You have successfully merged Infrastructure with Operations!
+ ![The expected output in web shell. ](images/result.png)
+
+**The Cleanup:** Do not leave this server running.
+
+4.  `terraform destroy` *(Type 'yes' to permanently delete the server and save our SU allocation).*
 :::
 
-::: {.callout-important collapse="false"}
+::: {.callout-note collapse="false"}
 ## routing.sys — Why did that work?
 
-- You just used the `curl` command to download a webpage from your new Terraform server, but you used an IP address that started with `10.x.x.x`. 
-- Try putting that exact same IP address into your laptop's web browser. **It will fail.** Why?
-- Because that IP address is completely invisible to the public internet. 
-- When you built your own VM in Exosphere, it was attached to our project's internal router (the `auto_allocated_network`), and we explicitly gave it a **Floating IP** (a public address) so your laptop could reach it. 
-- When your Terraform script built this new server, it attached it to that *exact same internal network*, but it **did not** request a Floating IP. 
-
-
+-   You just used the `curl` command to download a webpage from your new Terraform server, but you used an IP address that started with `10.x.x.x`.
+-   Try putting that exact same IP address into your laptop's web browser. **It will fail.** Why?
+-   Because that IP address is completely invisible to the public internet.
+-   When you built your own VM in Exosphere, it was attached to our project's internal router (the `auto_allocated_network`), and we explicitly gave it a **Floating IP** (a public address) so your laptop could reach it.
+-   When your Terraform script built this new server, it attached it to that *exact same internal network*, but it **did not** request a Floating IP.
 
 **The Microservices Paradigm:**
 
-- When you ran that `curl` command from another VM on JS2, the traffic never left the JS2 data center. It traveled directly across the internal virtual switch from one machine to the other.
-- In a production setting, your database servers and backend APIs will **never** have public IP addresses. 
-- They will live on private subnets. Hackers cannot port-scan a server they cannot route to. Only your public-facing web servers are allowed to talk to them over the internal network.
+-   When you ran that `curl` command from another VM on JS2, the traffic never left the JS2 data center. It traveled directly across the internal virtual switch from one machine to the other.
+-   In a production setting, your database servers and backend APIs will **never** have public IP addresses.
+-   They will live on private subnets. Hackers cannot port-scan a server they cannot route to. Only your public-facing web servers are allowed to talk to them over the internal network.
+:::
+
+------------------------------------------------------------------------
+
+## Part 6: Deliverables
+
+::: {.callout-note collapse="false"}
+## submission.zip — What to turn in
+
+**Required Submission:** Upload a single screenshot to the course assignments page showing your Exosphere Web Shell (or SSH terminal). The screenshot must clearly show: 
+
+1. The execution of the `curl <YOUR_INTERNAL_IP>` command. 
+2. The successful HTML output (`<h1>Hello from Terraform!</h1>...`).
 :::
