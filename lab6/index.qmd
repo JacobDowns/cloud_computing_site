@@ -39,12 +39,13 @@ Before we write code, we must understand the two primary ways to interact with a
 ### 2. Terraform (Declarative)
 
 -   Terraform is **Declarative**.
--   Instead of giving sequential commands, you write a blueprint (a "state") of exactly what you want the world to look like. - Terraform calculates the difference between reality and your blueprint, and makes the necessary API calls to make reality match your code.
+-   Instead of giving sequential commands, you write a blueprint (a "state") of exactly what you want the world to look like. 
+- Terraform calculates the difference between reality and your blueprint, and makes the necessary API calls to make reality match your code.
 -   **The Syntax:** Terraform uses HashiCorp Configuration Language (HCL). It relies on distinct `blocks`.
 -   **Example:**
 
 ```         
-hcl resource "openstack_compute_instance_v2" "my_server" {    
+resource "openstack_compute_instance_v2" "my_server" {    
    # Configuration goes here
 }
 ```
@@ -102,7 +103,7 @@ resource "google_compute_instance" "demo" {
 }
 ```
 
-> **Takeaway:** If you can write Terraform for Jetstream2 today, you already know how to provision enterprise infrastructure at a Fortune 500 company running on GCP or AWS tomorrow. You just have to look up the provider's specific dictionary!
+> **Takeaway:** If you can write Terraform for Jetstream2 today, you already know how to provision enterprise infrastructure at a Fortune 500 company running on GCP or AWS tomorrow. You just have to look up the provider's specific dictionary.
 :::
 
 ------------------------------------------------------------------------
@@ -201,7 +202,7 @@ source lab6-cli-key-openrc.sh
 
 -   The `.sh` file is a Linux script, so it will not work natively in the standard Command Prompt or PowerShell.
 
-> *Pro-Tip: I highly recommend installing the **Windows Subsystem for Linux (WSL)**. It is the industry standard for cloud engineers using Windows. If you are using WSL, you are running genuine Ubuntu and can just use the Mac/Linux command above*
+> *Pro-Tip: I highly recommend installing the **Windows Subsystem for Linux (WSL)** if you are not already!*
 
 If you are not using WSL currently, you have two fallback options:
 
@@ -220,7 +221,7 @@ $env:OS_APPLICATION_CREDENTIAL_SECRET="paste_your_secret_here"
 openstack server list
 ```
 
-You should see a massive ASCII table displaying your midterm server, my servers, and your classmates' servers! Your laptop has successfully breached the data center perimeter.
+You should see a massive ASCII table displaying your personal server, my servers, and your classmates' servers! 
 :::
 
 ------------------------------------------------------------------------
