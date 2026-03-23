@@ -33,9 +33,43 @@ title: "Lecture 11: Welcome to Google Cloud"
 2.  **Budgets & Alerts:** The very first thing you do in a new GCP project is set up a Billing Alert. We will configure an alert to email you the moment you spend \$10, \$25, and \$40 of your credits so you are never caught off guard.
 :::
 
+## Part 2: The Resource Hierarchy (Escaping the Shared Sandbox)
+
+-   In the first half of this semester, we worked in OpenStack.
+-   Organization and permissions structures mostly worked via the *Don't touch an instance you didn't create* rule.
+-   That was because everyone in the class was dumped into a single OpenStack tenant with equal permissions.
+-   It was a shared sandbox where anyone could accidentally delete anyone else's work.
+
+> Enterprise cloud environments do not operate on the honor system. Google Cloud solves this using a strict **Resource Hierarchy** and **Identity and Access Management (IAM)**.
+
+### The Four Levels of Organization
+
+When you work for a real company, you won't just have a standalone account. Your work will be governed by a top-down structure:
+
+1.  **The Organization Node:** The absolute root of the company (e.g., `umontana.edu` or `netflix.com`). The central IT department controls this.
+2.  **Folders:** Used to isolate departments or environments. A company might have a `Data Science` folder and a `Web Development` folder. Inside `Web Development`, they might have sub-folders for `Production` and `Testing`.
+3.  **Projects:** The core trust boundary. **A Project is not just a workspace; it is a billing and security container.** Every single resource (VM, database, function) *must* belong to exactly one project.
+4.  **Resources:** The actual compute services you spin up (e.g., a Compute Engine VM or a Cloud Storage bucket).
+
+![I think therefore IAM.](images/descartes.webp){fig-align="center"}
+
+### How Companies Manage Personnel (IAM)
+
+-   Google Cloud uses IAM (Identity and Access Management) to answer one question: *Who can do what on which resource?*
+-   Permissions cascade downwards.
+-   If the IT department grants you "Compute Admin" rights at the `Web Development` Folder level, you automatically inherit the ability to spin up virtual machines in *every* Project inside that folder.
+
+::: {.callout-important collapse="false"}
+## security.sys — The Principle of Least Privilege
+
+Unlike our OpenStack classroom, in a real GCP environment, you will almost never be granted "Owner" access. Companies adhere to the **Principle of Least Privilege**.
+
+If your job is to upload daily images to a storage bucket, the cloud architect will not give you access to the whole Project. They will assign your user account a highly specific role (e.g., `roles/storage.objectCreator`) applied *only* to that specific bucket. You won't even be able to view the virtual machines running right next door.
+:::
+
 ------------------------------------------------------------------------
 
-## Part 2: The Interfaces (How we control GCP)
+## Part 3: The Interfaces (How we control GCP)
 
 Google provides three primary ways to interact with its cloud APIs. You will use all three in your upcoming labs.
 
@@ -45,7 +79,7 @@ Google provides three primary ways to interact with its cloud APIs. You will use
 
 ------------------------------------------------------------------------
 
-## Part 3: The `gcloud` Quick Start Cheat Sheet
+## Part 4: The `gcloud` Quick Start Cheat Sheet
 
 -   Before we build anything, you need to know how to navigate the CLI.
 -   Similarly to the OpenStack CLI, the `gcloud` tool uses a strict `noun` + `verb` hierarchy (e.g., `gcloud compute instances list`).
@@ -70,7 +104,7 @@ Google provides three primary ways to interact with its cloud APIs. You will use
 
 ------------------------------------------------------------------------
 
-## Part 4: The Compute Continuum (Deep Dive)
+## Part 5: The Compute Continuum (Deep Dive)
 
 When you want to run code on GCP, you have to answer a crucial architectural question: *How much control do I need, and how much server maintenance am I willing to do?*
 
@@ -92,7 +126,7 @@ When you want to run code on GCP, you have to answer a crucial architectural que
 
 ------------------------------------------------------------------------
 
-## Part 5: In-Class Walkthroughs & Use Cases
+## Part 6: In-Class Walkthroughs & Use Cases
 
 We are now going to deploy code across the compute continuum live. I will use the `gcloud` CLI to demonstrate how to interact with these services without using the web browser.
 
@@ -240,7 +274,7 @@ Cloud Run bridges the gap between the flexibility of containers and the ease of 
 2.  **Scale-to-Zero:** If your application gets hit by a viral Reddit post, it automatically scales up to 1,000 instances. If everyone goes to sleep and traffic drops to zero, the infrastructure literally spins down to zero.
 3.  **Micro-Billing:** You do not pay a flat monthly fee to rent a machine. You pay *by the millisecond* only for the exact compute time your code spends actively processing a request. If your app is idle, you pay \$0.00.
 
-![The truth about serverless. ](images/serverless-2.jpg){fig-align="center"}
+![The truth about serverless.](images/serverless-2.jpg){fig-align="center"}
 :::
 
 -   **The Reality:** You package your application into a Docker container. You give the container to Cloud Run. It is fully serverless—it scales from zero to thousands of instances in seconds, and you only pay while a request is actively being processed.
@@ -270,14 +304,12 @@ gcloud run deploy classroom-container-app \
 
 Cloud Run Functions (formerly known as Cloud Functions) represent true event-driven computing. You do not deploy a full application with multiple routes. You deploy a single snippet of code—a literal function—that is triggered by a specific event.
 
-* **Supported Languages:** You can write functions natively in Node.js, Python, Go, Java, Ruby, PHP, and .NET.
-* **The Triggers (How does it wake up?):**
-  * **HTTP:** Triggered by a standard web URL (great for webhooks from Stripe or GitHub).
-  * **Cloud Storage:** Triggered when a file is created, updated, or deleted in a bucket.
-  * **Pub/Sub:** Triggered when a message is published to a topic (useful for asynchronous background processing).
-  * **Firestore:** Triggered when a document in your NoSQL database is created or changed.
-
-
+-   **Supported Languages:** You can write functions natively in Node.js, Python, Go, Java, Ruby, PHP, and .NET.
+-   **The Triggers (How does it wake up?):**
+    -   **HTTP:** Triggered by a standard web URL (great for webhooks from Stripe or GitHub).
+    -   **Cloud Storage:** Triggered when a file is created, updated, or deleted in a bucket.
+    -   **Pub/Sub:** Triggered when a message is published to a topic (useful for asynchronous background processing).
+    -   **Firestore:** Triggered when a document in your NoSQL database is created or changed.
 
 ::: {.callout-important collapse="false"}
 ## architecture.sys — Rule of Thumb: Cloud Run vs. Cloud Run Functions
@@ -286,15 +318,15 @@ Because these two services share a name and underlying infrastructure, deciding 
 
 **Choose Cloud Run (Containers) when:**
 
-1. You are building a full web application or REST API with multiple routes (e.g., `/users`, `/billing`, `/products`).
-2. Your application requires custom system-level dependencies (like a specific C++ rendering library) that you must package into a Dockerfile.
-3. You are migrating an existing web application to the cloud.
+1.  You are building a full web application or REST API with multiple routes (e.g., `/users`, `/billing`, `/products`).
+2.  Your application requires custom system-level dependencies (like a specific C++ rendering library) that you must package into a Dockerfile.
+3.  You are migrating an existing web application to the cloud.
 
 **Choose Cloud Run Functions (FaaS) when:**
 
-1. You are writing "Cloud Glue." You just need a single, isolated script to run in response to a specific event in GCP (e.g., "When a PDF is uploaded, extract the text and save it to a database").
-2. You do not want to write or manage Dockerfiles. 
-3. Your code does exactly one thing, and it does it quickly.
+1.  You are writing "Cloud Glue." You just need a single, isolated script to run in response to a specific event in GCP (e.g., "When a PDF is uploaded, extract the text and save it to a database").
+2.  You do not want to write or manage Dockerfiles.
+3.  Your code does exactly one thing, and it does it quickly.
 :::
 
 ::: {.callout-note collapse="false"}
@@ -303,7 +335,8 @@ Because these two services share a name and underlying infrastructure, deciding 
 Let's deploy a simple Node.js function (`index.js`) that triggers via a standard web browser (HTTP). Notice we don't need a Dockerfile or an `app.yaml`, we just point the CLI at our JavaScript file.
 
 **1. The `index.js` file:**
-```javascript
+
+``` javascript
 const functions = require('@google-cloud/functions-framework');
 
 // Register an HTTP function with the Functions Framework
@@ -313,6 +346,7 @@ functions.http('helloClass', (req, res) => {
 ```
 
 **2. The Deployment Command:**
+
 ``` bash
 gcloud functions deploy classroom-function \
     --gen2 \
@@ -324,18 +358,18 @@ gcloud functions deploy classroom-function \
     --allow-unauthenticated
 ```
 
-**Understanding the Flags:** | Flag | Description | 
-| :--- | :--- | 
-| `--gen2` | Uses Google's newer "2nd Generation" architecture, which actually runs the function on top of Cloud Run for better performance. | 
-| `--runtime` | Specifies the language environment Google needs to build (e.g., `nodejs20`, `python310`). | 
-| `--source` | Where the code lives. The `.` means the current directory. | 
-| `--entry-point` | The exact name of the function inside your code file that should execute when triggered. | 
+| **Understanding the Flags:** | Flag |
+|:-----------------------------------|:-----------------------------------|
+| `--gen2` | Uses Google's newer "2nd Generation" architecture, which actually runs the function on top of Cloud Run for better performance. |
+| `--runtime` | Specifies the language environment Google needs to build (e.g., `nodejs20`, `python310`). |
+| `--source` | Where the code lives. The `.` means the current directory. |
+| `--entry-point` | The exact name of the function inside your code file that should execute when triggered. |
 | `--trigger-http` | Tells GCP to generate a public URL to trigger this function. |
 :::
 
 ------------------------------------------------------------------------
 
-## Part 6: The Cleanup (Stopping the Billing Meter)
+## Part 7: The Cleanup (Stopping the Billing Meter)
 
 If you ran the commands above in your own \$50 student project, your billing meter is currently ticking. When you are done experimenting, you must tear down the infrastructure to save your credits.
 
@@ -373,8 +407,8 @@ gcloud functions delete classroom-function --region=us-central1 --quiet
 
 ------------------------------------------------------------------------
 
-## Part 7: Next Steps
+## Part 8: Next Steps
 
-- Now that you have seen the architecture from a high level and watched the API execute the commands, the next step is to try some of these services yourself via Google Skills Boost labs. 
-- In particular, you'll want to start the course **Google Cloud Computing Foundations: Cloud Computing Fundamentals** in the Google Skills platform.
-- This will let you practice using the continuum of compute services in GCP. 
+-   Now that you have seen the architecture from a high level and watched the API execute the commands, the next step is to try some of these services yourself via Google Skills Boost labs.
+-   In particular, you'll want to start the course **Google Cloud Computing Foundations: Cloud Computing Fundamentals** in the Google Skills platform.
+-   This will let you practice using the continuum of compute services in GCP.
