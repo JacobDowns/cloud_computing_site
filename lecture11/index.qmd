@@ -182,7 +182,6 @@ gcloud compute firewall-rules create allow-http \
 ::: {.callout-note collapse="false"}
 ## capabilities.exe
 
--   Incredibly sophisticated.
 -   App Engine is designed to handle everything from a student's simple "Hello World" homework to massive, global architectures.
 -   In fact, **Snapchat** launched and scaled its entire early infrastructure on App Engine.
 -   It natively supports Microservices. You can deploy a Python API, a Node.js frontend, and a Go processing worker all within the same App Engine project, and Google will automatically route traffic securely between them.
