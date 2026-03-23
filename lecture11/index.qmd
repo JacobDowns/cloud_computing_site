@@ -1,0 +1,380 @@
+---
+title: "Lecture 11: Welcome to Google Cloud"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — Today's Objective
+
+-   For midterm projects, we built our own infrastructure from scratch using OpenStack on Jetstream2. You learned the hard way how to provision virtual machines, manage subnets, and configure firewalls.
+-   For the second half of the semester, we are migrating to the commercial **Google Cloud Platform (GCP)**.
+-   Today, we will set up your Google Cloud Skills Boost accounts, discuss the reality of cloud economics, and walk through the "Compute Continuum" (the spectrum of services Google offers to run your code).
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: The Setup & The \$50 Reality Check
+
+-   You will be completing your asynchronous homework using the **Google Cloud Skills Boost** platform. This platform spins up temporary, disposable Google Cloud environments for you to practice in safely.
+
+-   However, for your final projects, you will be operating in a real, persistent GCP environment using \$50 in student credits.
+
+    ![The hazards of cloud compuing.](images/aws.webp)
+
+::: {.callout-important collapse="false"}
+## billing.exe — Cloud Economics
+
+-   In Jetstream2, if you left a server running, it cost us "Service Units" (SUs).
+-   In Google Cloud, if you leave a massive database running over the weekend, it drains actual dollars from your credit balance.
+-   For this class, the main risk is draining your \$50 credit balance too quickly.
+
+**The Golden Rules of Commercial Cloud:**
+
+1.  **Turn it off:** If you are not actively using a resource, destroy it.
+2.  **Budgets & Alerts:** The very first thing you do in a new GCP project is set up a Billing Alert. We will configure an alert to email you the moment you spend \$10, \$25, and \$40 of your credits so you are never caught off guard.
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: The Interfaces (How we control GCP)
+
+Google provides three primary ways to interact with its cloud APIs. You will use all three in your upcoming labs.
+
+1.  **The Cloud Console (GUI):** The web dashboard. It is pretty, but inefficient for some tasks.
+2.  **Cloud Shell:** A temporary, free, browser-based Linux terminal provided by Google. It already has all the tools (`gcloud`, `terraform`, `git`) pre-installed.
+3.  **The `gcloud` CLI (Local):** Similar to the OpenStack CLI. This is how you orchestrate massive deployments directly from your own laptop.
+
+------------------------------------------------------------------------
+
+## Part 3: The `gcloud` Quick Start Cheat Sheet
+
+-   Before we build anything, you need to know how to navigate the CLI.
+-   Similarly to the OpenStack CLI, the `gcloud` tool uses a strict `noun` + `verb` hierarchy (e.g., `gcloud compute instances list`).
+-   The following cheat sheet may be handy for your labs.
+
+::: {.callout-tip collapse="false"}
+## cheat_sheet.txt — Essential Commands
+
+| **Authentication & Configuration** | Command |
+|:-----------------------------------|:-----------------------------------|
+| `gcloud auth login` | Opens a browser to authenticate your terminal with your Google account. |
+| `gcloud projects list` | Lists all the GCP projects you currently have access to. |
+| `gcloud config set project [ID]` | Tells the CLI which project you are currently working inside. |
+| `gcloud config set compute/region [REGION]` | Sets your default data center region (e.g., `us-central1`) to save typing. |
+| `gcloud config list` | Displays your currently active configuration (account, project, region). |
+
+| **Discovery & Troubleshooting** | Command |
+|:-----------------------------------|:-----------------------------------|
+| `gcloud compute instances list` | Shows all currently running Virtual Machines in your project. |
+| `gcloud help [command]` | The ultimate lifesaver. Displays the official manual for any command. (e.g., `gcloud help compute instances create`). |
+:::
+
+------------------------------------------------------------------------
+
+## Part 4: The Compute Continuum (Deep Dive)
+
+When you want to run code on GCP, you have to answer a crucial architectural question: *How much control do I need, and how much server maintenance am I willing to do?*
+
+::: {.callout-note collapse="false"}
+## firebase.dll — Wait, haven't we used this before?
+
+-   Since you are already familiar with **Firebase**, you might be wondering how it fits into this massive GCP ecosystem.
+
+-   Here is the secret: **Firebase *is* Google Cloud Platform!** Firebase is essentially a mobile and web developer-friendly "wrapper" around core GCP infrastructure.
+
+    -   **Cloud Firestore** in Firebase? That is GCP's native Firestore database.
+    -   **Cloud Functions** for Firebase? Those are the exact same GCP Cloud Run Functions we are learning about today.
+    -   **Firebase Storage?** That is just a Google Cloud Storage bucket with simplified security rules.
+
+-   When you use GCP directly, you are just taking the Firebase training wheels off to access the raw engine underneath!
+:::
+
+-   Google offers a spectrum of compute options ranging from bare-metal control to fully managed serverless execution. Let's walk through the four levels you will be testing in your labs.
+
+------------------------------------------------------------------------
+
+## Part 5: In-Class Walkthroughs & Use Cases
+
+We are now going to deploy code across the compute continuum live. I will use the `gcloud` CLI to demonstrate how to interact with these services without using the web browser.
+
+### Level 1: Compute Engine (IaaS)
+
+Compute Engine is Google's Virtual Machine service. It is the exact equivalent of OpenStack Nova.
+
+-   **The Reality:** You get a raw hard drive, an IP address, and an OS. You have total control, but you are the janitor. If Ubuntu needs a security patch, it is your responsibility.
+-   **Realistic Use Case:** A legacy application that requires an outdated version of Windows, or a heavily customized database where you need to tune the Linux kernel parameters.
+
+::: {.callout-note collapse="false"}
+## demo_1.sh — The Compute Engine Walkthrough
+
+Let's spin up a fully functioning Nginx web server in one command and open the firewall.
+
+``` bash
+gcloud compute instances create classroom-vm \
+    --machine-type=e2-micro \
+    --image-family=ubuntu-2204-lts \
+    --image-project=ubuntu-os-cloud \
+    --tags=http-server \
+    --metadata=startup-script="#! /bin/bash
+      apt-get update
+      apt-get install -y nginx
+      echo '<h1>Hello from Compute Engine!</h1>' > /var/www/html/index.html"
+
+gcloud compute firewall-rules create allow-http \
+    --action=ALLOW \
+    --rules=tcp:80 \
+    --target-tags=http-server
+```
+
+| **Understanding the Flags:** | Flag |
+|:-----------------------------------|:-----------------------------------|
+| `--machine-type` | The specific hardware footprint (CPU/RAM). `e2-micro` is a tiny, cheap instance. |
+| `--image-family` | Tells GCP to grab the latest, fully patched version of this OS family. |
+| `--tags` | Applies a network tag to the VM, allowing us to easily link firewall rules to it. |
+| `--metadata=startup-script` | The exact equivalent of `user_data` in OpenStack/Terraform. Runs on first boot. |
+| `--rules` | Specifies the protocol and port to open (e.g., `tcp:80` for standard web traffic). |
+:::
+
+### Level 2: App Engine (PaaS)
+
+-   App Engine (Platform as a Service) is where you stop managing servers and start managing applications.
+
+<!-- -->
+
+-   **The Reality:** You write your code, define your dependencies, and hand the folder to Google. Google provisions the hidden VMs, sets up the load balancer, installs the SSL certificates, and auto-scales the app dynamically based on web traffic.
+-   **Supported Languages:** App Engine comes in two flavors:
+    -   **Standard Environment:** Runs code in a highly locked-down, secure sandbox. It starts up instantly and can scale down to zero instances (costing \$0) when no one is visiting. It supports **Python, Java, Node.js, Go, PHP, and Ruby**.
+    -   **Flexible Environment:** If you need a language not listed above (e.g., Rust or C#), Flexible spins up a Docker container behind the scenes. It gives you more freedom, but it cannot scale to zero and takes longer to boot.
+
+::: {.callout-note collapse="false"}
+## capabilities.exe
+
+-   Incredibly sophisticated.
+-   App Engine is designed to handle everything from a student's simple "Hello World" homework to massive, global architectures.
+-   In fact, **Snapchat** launched and scaled its entire early infrastructure on App Engine.
+-   It natively supports Microservices. You can deploy a Python API, a Node.js frontend, and a Go processing worker all within the same App Engine project, and Google will automatically route traffic securely between them.
+-   It also supports "Traffic Splitting," allowing you to route exactly 5% of your users to a new version of your code for A/B testing.
+
+![A depiction of microservices](images/microservices-2.png){fig-align="center"}
+:::
+
+::: {.callout-note collapse="false"}
+## demo_2.sh — The App Engine Walkthrough
+
+To deploy to App Engine, you only need three text files in a folder. No bash scripts, no firewall commands.
+
+**1. `requirements.txt`** (Tells Google what Python libraries to install)
+
+``` text
+Flask==2.0.1
+gunicorn==20.1.0
+```
+
+**2. `main.py`** (Your actual application logic)
+
+``` python
+from flask import Flask
+
+# App Engine looks for an object named 'app' by default
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return """
+    <h1>Hello from App Engine!</h1>
+    <p>I didn't have to configure a single firewall rule to get this online.</p>
+    """
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)
+```
+
+**3. `app.yaml`** (The blueprint that configures the Google Cloud environment)
+
+``` yaml
+# We are telling Google to use the Python 3.9 Standard Environment
+runtime: python39
+
+# This is the exact terminal command Google will run to start our web server
+entrypoint: gunicorn -b :$PORT main:app
+```
+
+**The Deployment Command:** Open your terminal in the folder containing those three files and run:
+
+``` bash
+gcloud app deploy --quiet
+```
+
+*Google will upload your files, install Flask, attach a public HTTPS URL, and start serving traffic.*
+:::
+
+::: {.callout-tip collapse="false"}
+## The PaaS Bargain: Who Manages What?
+
+When you choose App Engine over Compute Engine (VMs), you are entering into a "Shared Responsibility Model" with Google. Here is what that trade-off actually looks like:
+
+| The Developer Manages (You) | Google Cloud Manages (The Platform) |
+|:-----------------------------------|:-----------------------------------|
+| **Application Code:** (`main.py`) | **The Operating System:** (Ubuntu/Debian updates) |
+| **Dependencies:** (`requirements.txt`) | **Security Patches:** (Kernel & network vulnerabilities) |
+| **Environment Config:** (`app.yaml`) | **Load Balancing:** (Distributing traffic globally) |
+| **Database Schema/Queries** | **Auto-Scaling:** (Spinning up new servers if traffic spikes) |
+| **Application Logic & Bugs** | **SSL Certificates:** (Generating & renewing HTTPS crypto) |
+
+**The Takeaway:** You trade underlying infrastructure control for massive developer velocity.
+:::
+
+![The continuum of GCP compute services.](images/paste-1.png)
+
+### Level 3: Cloud Run (Serverless Containers)
+
+Cloud Run bridges the gap between the flexibility of containers and the ease of App Engine.
+
+::: {.callout-important collapse="false"}
+## buzzword.sys — The "Serverless" Misnomer
+
+-   **Serverless does *not* mean there are no servers.**
+-   Your code is still running on physical CPUs bolted into racks inside a massive Google data center. "Serverless" is simply a marketing term for an operational and billing model.
+-   When an engineer says a service is serverless, they mean three specific things:
+
+1.  **Invisible Infrastructure:** You cannot SSH into the server. You never see the operating system. You never install a security patch.
+2.  **Scale-to-Zero:** If your application gets hit by a viral Reddit post, it automatically scales up to 1,000 instances. If everyone goes to sleep and traffic drops to zero, the infrastructure literally spins down to zero.
+3.  **Micro-Billing:** You do not pay a flat monthly fee to rent a machine. You pay *by the millisecond* only for the exact compute time your code spends actively processing a request. If your app is idle, you pay \$0.00.
+
+![The truth about serverless. ](images/serverless-2.jpg){fig-align="center"}
+:::
+
+-   **The Reality:** You package your application into a Docker container. You give the container to Cloud Run. It is fully serverless—it scales from zero to thousands of instances in seconds, and you only pay while a request is actively being processed.
+-   **Realistic Use Case:** You wrote a web app that relies on a weird, obscure C++ library to render PDF files. App Engine doesn't support that library natively, so you pack it into a Docker container and deploy it to Cloud Run.
+
+::: {.callout-note collapse="false"}
+## demo_3.sh — The Cloud Run Walkthrough
+
+Assuming you have built a Docker image and pushed it to Google's Artifact Registry, deployment is a single command.
+
+``` bash
+gcloud run deploy classroom-container-app \
+    --image=us-central1-docker.pkg.dev/your-project-id/repo/my-app:latest \
+    --allow-unauthenticated \
+    --region=us-central1 \
+    --port=8080
+```
+
+| **Understanding the Flags:** | Flag |
+|:-----------------------------------|:-----------------------------------|
+| `--image` | The exact URI pointing to your compiled Docker container in the registry. |
+| `--allow-unauthenticated` | Bypasses IAM security, making your web application public to the entire internet. |
+| `--port` | Tells Cloud Run which port your container is listening on internally so it can route traffic correctly. |
+:::
+
+### Level 4: Cloud Run Functions (FaaS)
+
+Cloud Run Functions (formerly known as Cloud Functions) represent true event-driven computing. You do not deploy a full application with multiple routes. You deploy a single snippet of code—a literal function—that is triggered by a specific event.
+
+* **Supported Languages:** You can write functions natively in Node.js, Python, Go, Java, Ruby, PHP, and .NET.
+* **The Triggers (How does it wake up?):**
+  * **HTTP:** Triggered by a standard web URL (great for webhooks from Stripe or GitHub).
+  * **Cloud Storage:** Triggered when a file is created, updated, or deleted in a bucket.
+  * **Pub/Sub:** Triggered when a message is published to a topic (useful for asynchronous background processing).
+  * **Firestore:** Triggered when a document in your NoSQL database is created or changed.
+
+
+
+::: {.callout-important collapse="false"}
+## architecture.sys — Rule of Thumb: Cloud Run vs. Cloud Run Functions
+
+Because these two services share a name and underlying infrastructure, deciding between them can be confusing. Here is the industry rule of thumb:
+
+**Choose Cloud Run (Containers) when:**
+
+1. You are building a full web application or REST API with multiple routes (e.g., `/users`, `/billing`, `/products`).
+2. Your application requires custom system-level dependencies (like a specific C++ rendering library) that you must package into a Dockerfile.
+3. You are migrating an existing web application to the cloud.
+
+**Choose Cloud Run Functions (FaaS) when:**
+
+1. You are writing "Cloud Glue." You just need a single, isolated script to run in response to a specific event in GCP (e.g., "When a PDF is uploaded, extract the text and save it to a database").
+2. You do not want to write or manage Dockerfiles. 
+3. Your code does exactly one thing, and it does it quickly.
+:::
+
+::: {.callout-note collapse="false"}
+## demo_4.sh — The Cloud Run Functions Walkthrough
+
+Let's deploy a simple Node.js function (`index.js`) that triggers via a standard web browser (HTTP). Notice we don't need a Dockerfile or an `app.yaml`, we just point the CLI at our JavaScript file.
+
+**1. The `index.js` file:**
+```javascript
+const functions = require('@google-cloud/functions-framework');
+
+// Register an HTTP function with the Functions Framework
+functions.http('helloClass', (req, res) => {
+  res.send('Hello from an Event-Driven Function!');
+});
+```
+
+**2. The Deployment Command:**
+``` bash
+gcloud functions deploy classroom-function \
+    --gen2 \
+    --runtime=nodejs20 \
+    --region=us-central1 \
+    --source=. \
+    --entry-point=helloClass \
+    --trigger-http \
+    --allow-unauthenticated
+```
+
+**Understanding the Flags:** | Flag | Description | 
+| :--- | :--- | 
+| `--gen2` | Uses Google's newer "2nd Generation" architecture, which actually runs the function on top of Cloud Run for better performance. | 
+| `--runtime` | Specifies the language environment Google needs to build (e.g., `nodejs20`, `python310`). | 
+| `--source` | Where the code lives. The `.` means the current directory. | 
+| `--entry-point` | The exact name of the function inside your code file that should execute when triggered. | 
+| `--trigger-http` | Tells GCP to generate a public URL to trigger this function. |
+:::
+
+------------------------------------------------------------------------
+
+## Part 6: The Cleanup (Stopping the Billing Meter)
+
+If you ran the commands above in your own \$50 student project, your billing meter is currently ticking. When you are done experimenting, you must tear down the infrastructure to save your credits.
+
+Notice how `gcloud` follows the exact same syntax for deletion as it did for creation!
+
+::: {.callout-warning collapse="false"}
+## destroy.exe — Teardown Commands
+
+**1. Delete the Compute Engine VM:**
+
+``` bash
+gcloud compute instances delete classroom-vm --zone=us-central1-a --quiet
+```
+
+**2. Delete the Compute Engine Firewall Rule:**
+
+``` bash
+gcloud compute firewall-rules delete allow-http --quiet
+```
+
+**3. Delete the Cloud Run Container Service:**
+
+``` bash
+gcloud run services delete classroom-container-app --region=us-central1 --quiet
+```
+
+**4. Delete the Cloud Run Function:**
+
+``` bash
+gcloud functions delete classroom-function --region=us-central1 --quiet
+```
+
+*Note: App Engine is a bit unique. You cannot easily "delete" an App Engine application without deleting the entire GCP project, but you can stop the version from serving traffic and incurring costs using `gcloud app versions stop v1`.*
+:::
+
+------------------------------------------------------------------------
+
+## Part 7: Next Steps
+
+- Now that you have seen the architecture from a high level and watched the API execute the commands, the next step is to try some of these services yourself via Google Skills Boost labs. 
+- In particular, you'll want to start the course **Google Cloud Computing Foundations: Cloud Computing Fundamentals** in the Google Skills platform.
+- This will let you practice using the continuum of compute services in GCP. 
