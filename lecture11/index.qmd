@@ -391,11 +391,25 @@ Because these two services share a name and underlying infrastructure, deciding 
 ::: {.callout-note collapse="false"}
 ## demo_4.sh — The Cloud Run Functions Walkthrough
 
-Let's deploy a simple Node.js function (`index.js`) that triggers via a standard web browser (HTTP). Notice we don't need a Dockerfile or an `app.yaml`, we just point the CLI at our JavaScript file.
+Let's deploy a simple Node.js function (`index.js`) that triggers via a standard web browser (HTTP). Notice we don't need a Dockerfile or an `app.yaml`. We just need our code and a dependency file!
 
-**1. The `index.js` file:**
+**1. The `package.json` file:**
+*(This tells Google's build servers to install the Functions Framework before running our code).*
 
-``` javascript
+```json
+{
+  "name": "classroom-function",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0"
+  }
+}
+```
+
+**2. The `index.js` file:**
+
+```javascript
 const functions = require('@google-cloud/functions-framework');
 
 // Register an HTTP function with the Functions Framework
@@ -404,7 +418,8 @@ functions.http('helloClass', (req, res) => {
 });
 ```
 
-**2. The Deployment Command:**
+**3. The Deployment Command:**
+Open your terminal in the folder containing these two files and run:
 
 ``` bash
 gcloud functions deploy classroom-function \
@@ -422,10 +437,9 @@ gcloud functions deploy classroom-function \
 | `--gen2` | Uses Google's newer "2nd Generation" architecture, which actually runs the function on top of Cloud Run for better performance. |
 | `--runtime` | Specifies the language environment Google needs to build (e.g., `nodejs20`, `python310`). |
 | `--source` | Where the code lives. The `.` means the current directory. |
-| `--entry-point` | The exact name of the function inside your code file that should execute when triggered. |
+| `--entry-point` | The exact name of the function inside your code file that should execute when triggered (`helloClass`). |
 | `--trigger-http` | Tells GCP to generate a public URL to trigger this function. |
 :::
-
 ------------------------------------------------------------------------
 
 ## Part 8: The Cleanup (Stopping the Billing Meter)
