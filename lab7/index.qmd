@@ -1,0 +1,285 @@
+---
+title: "Lab 7: Cloud Engine and App Engine"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — Lab Objectives
+
+You will use the `gcloud` CLI installed directly on your own laptop to complete two tasks:
+
+1.  **The Ephemeral Number Cruncher:** You will treat a virtual machine as a disposable calculator, decoupling your compute power from your permanent storage.
+2.  **The Blue/Green Traffic Split:** You will deploy two separate versions of a web application simultaneously and command Google's global load balancers to split user traffic between them.
+:::
+
+------------------------------------------------------------------------
+
+## Phase 0: The Bank Account (Project & Billing Setup)
+
+- Before running code or building a virtual machine, you need a place to put it and a way to pay for it. 
+- In this phase, we are going to redeem your \$50 course credit, create your isolated sandbox (a Project), and set up alarms so you don't accidentally bankrupt yourself.
+
+### Step 1: Redeem Your Course Credits
+If you haven't redeemed your credits already, check your university email for the Google Cloud educational credit link provided for this course. 
+
+1. Click the link and sign in with your student Google account.
+2. Accept the terms. This automatically creates a hidden "Billing Account" in the background loaded with your \$50 credit.
+
+### Step 2: Create Your Cloud Project
+
+Google Cloud does not let you build resources "freely" in your account; everything must live inside a container called a Project. 
+
+
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com).
+2. In the top-left blue navigation bar, click the **Project Dropdown** (it might say "Select a project").
+3. Click **New Project** in the top right of the pop-up window.
+4. Name your project something identifiable (e.g., `[YOUR_LASTNAME]-cloud-course`).
+5. Click **Create**. 
+
+::: {.callout-important collapse="false"}
+## billing.sys — The Crucial Step
+Under the "Billing Account" dropdown during project creation, ensure your educational credit account (usually named "Google Cloud Course Credits" or "Education") is selected. **If you leave this blank or attach a personal credit card, you will not be using your \$50 grant!**
+:::
+
+### Step 3: Set Your Billing Alarms
+
+::: {.callout-warning collapse="false"}
+## alarm.exe — Protecting Your Credits
+You are now the owner of a live, commercial cloud environment. To ensure a runaway script doesn't drain your \$50 over the weekend, we absolutely must set a budget alert.
+:::
+
+
+
+1. Click the **Navigation Menu** (the three horizontal lines or "hamburger" menu in the top left corner).
+2. Click **Billing**, then select **Budgets & alerts** from the left-hand menu.
+3. Click **Create Budget**.
+4. Name it `Course Budget Alert` and select your new project from the scope dropdown. Click **Next**.
+5. Set the Target Amount to **\$50.00**. Click **Next**.
+6. By default, Google will email you when you hit 50%, 90%, and 100% of your budget. Leave these default percentages and click **Finish**.
+
+*You are now fully funded and ready to start deploying infrastructure!*
+
+------------------------------------------------------------------------
+
+## Phase 1: The "Real World" Environment Setup
+
+- Professional cloud engineers often manage cloud infrastructure via terminal commands. 
+- Your first task is to install the Google cloud CLI and authenticate. 
+
+**Step 1: Install the Google Cloud SDK**
+
+* **Mac / Linux:** Install via Homebrew or by downloading the archive from the [official Google documentation](https://cloud.google.com/sdk/docs/install).
+
+* **Windows:** Download the official Windows Installer. Once installed, **open a PowerShell terminal** (Do not use Command Prompt or WSL for this lab to avoid formatting errors).
+
+**Step 2: Initialize & Authenticate**
+
+- Run the following command in your terminal. This will pop open your web browser, ask you to log in with your student Google account, and prompt you to select your project. 
+- Be sure to use the project you just created linked to your $50 of cloud credits. 
+
+```bash
+gcloud init
+```
+
+::: {.callout-tip collapse="false"}
+## check_auth.sh
+To verify your setup worked, run `gcloud config list`. This ensures your terminal is securely tunneled into your specific class project and not a default sandbox.
+:::
+
+------------------------------------------------------------------------
+
+## Phase 2: Compute Engine — "The Ephemeral Number Cruncher"
+
+- If a VM is deleted, its local hard drive is destroyed with it. 
+- In this challenge, you will spin up a VM to calculate Pi to 5,000 decimal places, upload the result to a permanent Cloud Storage bucket, and then automatically shut itself down to stop your billing meter.
+
+
+
+**Step 1: Create a Permanent Storage Bucket**
+
+We need a safe place to store our data before the VM self-destructs. Cloud Storage bucket names must be *globally unique* across the entire world, so append your last name and the year to the command.
+
+```bash
+gcloud storage buckets create gs://[YOUR_LASTNAME]-calc-results --location=us-central1
+```
+
+**Step 2: Launch the Disposable VM**
+We are going to launch a tiny Linux server. 
+
+::: {.callout-important collapse="false"}
+## security.log — IAM Scopes
+Notice we are passing a `--scopes=storage-rw` flag in the command below. By default, Google strictly prohibits VMs from writing data to storage buckets for security reasons. We must explicitly grant this specific VM the permission to write our results before it boots!
+:::
+
+Copy the appropriate command for your operating system:
+
+::: {.panel-tabset}
+## Mac / Linux
+```bash
+gcloud compute instances create number-cruncher \
+    --machine-type=e2-micro \
+    --zone=us-central1-a \
+    --scopes=storage-rw \
+    --metadata=startup-script="#! /bin/bash
+        apt-get update && apt-get install -y bc
+        echo 'scale=5000; 4*a(1)' | bc -l > /tmp/pi_result.txt
+        gcloud storage cp /tmp/pi_result.txt gs://[YOUR_LASTNAME]-calc-results/
+        sudo poweroff"
+```
+
+## Windows (PowerShell)
+```powershell
+gcloud compute instances create number-cruncher `
+    --machine-type=e2-micro `
+    --zone=us-central1-a `
+    --scopes=storage-rw `
+    --metadata=startup-script="#! /bin/bash; apt-get update && apt-get install -y bc; echo 'scale=5000; 4*a(1)' | bc -l > /tmp/pi_result.txt; gcloud storage cp /tmp/pi_result.txt gs://[YOUR_LASTNAME]-calc-results/; sudo poweroff"
+```
+:::
+
+::: {.callout-tip collapse="true"}
+## Addendum: How is the VM actually calculating Pi?
+
+- You might be wondering what that cryptic string of text (`echo 'scale=5000; 4*a(1)' | bc -l`) is actually doing to your virtual machine's CPU. 
+- Here is the breakdown of this classic compute stress test:
+
+**1. The Tool: `bc` (Basic Calculator)**
+
+- Standard programming languages usually limit decimal precision to 64-bit floats (about 15-17 decimal places). 
+- Because we want 5,000 decimal places, we use `bc`, a command-line arbitrary-precision calculator.
+* The `-l` flag loads the standard math library.
+* `scale=5000` tells the calculator: *"Do not stop processing until you have accurately calculated 5,000 digits past the decimal point."*
+
+**2. The Math: $4 \times \arctan(1)$**
+In the `bc` math library, the function `a(1)` asks for the arctangent (inverse tangent) of 1 in radians. 
+
+
+
+If we remember our trigonometry from the unit circle, the tangent of $\frac{\pi}{4}$ is exactly 1:
+$$\tan\left(\frac{\pi}{4}\right) = 1$$
+
+Therefore, the inverse is also true:
+$$\arctan(1) = \frac{\pi}{4}$$
+
+To isolate $\pi$, the script simply multiplies the result by 4:
+$$4 \times \arctan(1) = \pi$$
+
+**3. The CPU Burn**
+
+- A computer processor cannot just "know" the inverse tangent of 1. It has to calculate it using an infinite series, specifically the Gregory-Leibniz series:
+$$\pi = 4 \times \left(1 - \frac{1}{3} + \frac{1}{5} - \frac{1}{7} + \frac{1}{9} - \dots\right)$$
+
+- To get 5,000 decimal places of accuracy, the CPU inside your Google Compute Engine virtual machine has to crunch through millions of iterations of that alternating fraction series. 
+- It actively spikes the CPU utilization, proves the compute power of the instance, writes the massive text string to the hard drive, pushes it to your storage bucket, and then cleanly deletes itself!
+:::
+
+**Step 3: Verification & Retrieval**
+
+- Run `gcloud compute instances list` a few times. After about 60 seconds, you should see the `number-cruncher` status change from `RUNNING` to `TERMINATED`. It did its job and stopped your billing meter!
+
+- You can now navigate to the Cloud Storage page in your web browser, open your bucket, and download your `pi_result.txt` file.
+
+------------------------------------------------------------------------
+
+## Phase 3: App Engine — "The Blue/Green Traffic Split"
+
+- Platform-as-a-Service (PaaS) automatically handles load balancing for you. In this challenge, you will deploy two versions of a website and split the traffic 50/50—a classic A/B testing maneuver.
+- The idea would be to simulate A/B prodcut testing. 
+
+
+
+**Step 0: Enable APIs & Create Files**
+First, turn on the App Engine APIs:
+```bash
+gcloud services enable appengine.googleapis.com cloudbuild.googleapis.com
+```
+
+Next, create a new folder on your computer and add these two files:
+
+`requirements.txt` 
+
+```txt
+Flask==3.0.0
+gunicorn==21.2.0
+```
+
+`app.yaml` 
+```yaml
+runtime: python312
+entrypoint: gunicorn -b :$PORT main:app
+```
+
+
+**Step 1: Deploy Version 1 (Blue)**
+
+Create a `main.py` file with the following code:
+```python
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return "<body style='background-color: lightblue;'><h1>This is Version 1 (Blue)</h1></body>"
+```
+Deploy this code as `v1` by running:
+```bash
+gcloud app deploy --version=v1 --quiet
+```
+*When it finishes, click the provided URL to verify your blue website is live.*
+
+**Step 2: Deploy Version 2 (Green) Silently**
+
+Change your `main.py` file to output a green background and say "This is Version 2 (Green)". 
+
+::: {.callout-tip collapse="false"}
+## routing.sys — The No-Promote Flag
+We want to deploy this new green version to the cloud *without* it immediately taking over our live URL and dropping all current users. We do this by appending the `--no-promote` flag to our deployment command.
+:::
+
+```bash
+gcloud app deploy --version=v2 --no-promote --quiet
+```
+
+**Step 3: Orchestrate the Split**
+
+Currently, `v1` is receiving 100% of your web traffic, and `v2` is receiving 0%. Command Google's load balancer to split the traffic evenly between the two versions:
+
+```bash
+gcloud app services set-traffic default --splits v1=.5,v2=.5 --split-by=random --quiet
+```
+
+**Step 4: The Proof**
+
+Open your App Engine website URL in your browser. Repeatedly hit the "Refresh" button. You should watch the website dynamically flip back and forth between the blue Version 1 and the green Version 2 as Google distributes your requests!
+
+------------------------------------------------------------------------
+
+## Phase 4: The Cleanup
+
+You have successfully completed the challenges. You must now tear down your infrastructure to protect your \$50 class credit!
+
+::: {.callout-warning collapse="false"}
+## destroy.exe — Teardown Commands
+
+**1. Delete the Ephemeral VM:**
+```bash
+gcloud compute instances delete number-cruncher --zone=us-central1-a --quiet
+```
+
+**2. Delete your Storage Bucket (and the files inside it):**
+*(Make sure to replace the bracketed text with your actual bucket name!)*
+```bash
+gcloud storage rm --recursive gs://[YOUR_LASTNAME]-calc-results
+```
+
+**3. Disable App Engine (Via the Web Console):**
+
+- App Engine Standard apps automatically "scale to zero" when not in use. 
+- However, to ensure a random web bot doesn't visit your URL and wake the app up, we will completely disable the application. 
+> *Note: Google currently does not allow you to disable an App Engine app from the command line!*
+
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com).
+2. Using the top-left navigation menu, go to **App Engine** > **Settings**.
+3. Click the **Disable application** button and follow the prompts.
+:::

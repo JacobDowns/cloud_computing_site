@@ -37,6 +37,7 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lab 4 — Dockerfile Swap](lab4/index.qmd)
 - [Lab 5 — Jetstream2 Wildfire Simulator](lab5/index.qmd)
 - [Lab 6 — Creating a VM via Terraform](lab6/index.qmd)
+- [Lab 7 — Compute Engine and App Engine](lab7/index.qmd)
 
 ## Homeworks ([all](homeworks.qmd)) {#homeworks}
 
