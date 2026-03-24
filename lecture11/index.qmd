@@ -307,7 +307,7 @@ When you choose App Engine over Compute Engine (VMs), you are entering into a "S
 | **Database Schema/Queries** | **Auto-Scaling:** (Spinning up new servers if traffic spikes) |
 | **Application Logic & Bugs** | **SSL Certificates:** (Generating & renewing HTTPS crypto) |
 
-**The Takeaway:** You trade underlying infrastructure control for massive developer velocity.
+**The Takeaway:** You trade underlying infrastructure control for developer speed and simplicity.
 :::
 
 ![The continuum of GCP compute services.](images/paste-1.png)
