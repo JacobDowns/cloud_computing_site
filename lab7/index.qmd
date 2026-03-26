@@ -283,3 +283,18 @@ gcloud storage rm --recursive gs://[YOUR_LASTNAME]-calc-results
 2. Using the top-left navigation menu, go to **App Engine** > **Settings**.
 3. Click the **Disable application** button and follow the prompts.
 :::
+
+------------------------------------------------------------------------
+
+## Phase 5: Lab Submission
+
+To receive credit for this lab, you must submit proof that both your VM and your App Engine load balancer worked correctly. Please upload the following three files to Canvas:
+
+* **Pi Results File:** Upload the actual `pi_result.txt` file that you downloaded from your Cloud Storage bucket. (This proves your VM successfully booted, ran the math calculation, and had the correct IAM permissions to write to your storage bucket).
+
+* **Screenshot A (Blue):** Take a screenshot of your web browser showing the Blue "Version 1" website. Hit refresh until the load balancer routes you to the Green "Version 2" website. Take a second screenshot, again ensuring the URL bar is visible. (This proves both versions are live and the 50/50 random traffic split is active on the same URL).
+
+::: {.callout-important collapse="false"}
+## reminder.sys — Final Reminder
+Before you submit your files, double-check that you completed **Phase 4**. Leaving resources running will drain your \$50 student credit, which you will need for your final project!
+:::
