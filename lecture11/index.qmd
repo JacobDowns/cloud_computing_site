@@ -799,3 +799,65 @@ gcloud storage rm --recursive gs://[YOUR_PROJECT_ID]-incoming-data
 -   Now that you have seen the architecture from a high level and watched the API execute the commands, the next step is to try some of these services yourself via Google Skills Boost labs.
 -   In particular, you'll want to start the course **Google Cloud Computing Foundations: Cloud Computing Fundamentals** in the Google Skills platform.
 -   This will let you practice using the continuum of compute services in GCP.
+
+## Part 10: Class Discussion — The Architecture Draft
+
+**The Scenario:** You are the Lead Cloud Architect for the university. Different research labs and student groups are coming to you with their software projects. Based on the "Compute Continuum" we just learned, you must tell them which GCP service they should use and *why*. 
+
+**Your Choices:** Compute Engine (VMs), App Engine (PaaS), Cloud Run (Containers), or Cloud Run Functions (FaaS).
+
+---
+
+### Scenario A: The Legacy Ice Sheet Model
+> A Glaciology lab has a massive, 15-year-old ice flow simulation written in Fortran. It requires a highly specific, outdated version of the Linux kernel to run without crashing, and a single simulation takes about three weeks of uninterrupted processing time to complete. 
+
+* **Which service do you choose and why?**
+
+::: {.callout-tip collapse="true"}
+## Answer Key: Scenario A
+**Compute Engine (IaaS)**
+
+* **The Why:** This requires deep OS-level control (a specific Linux kernel) and runs for weeks at a time. Serverless options (App Engine/Cloud Run) usually have maximum timeout limits (e.g., 60 minutes) and don't allow you to mess with the underlying operating system. They need a raw Virtual Machine.
+:::
+
+---
+
+### Scenario B: The Wildfire Spread API
+> The Forestry department built a machine learning model that predicts how a wildfire will spread over the next 12 hours. However, the Python code relies on several heavy, custom C++ geospatial libraries (like GDAL) to render the topography maps. They want to turn this into a web API that wildland firefighters can ping from their tablets in the field. Traffic will be near zero in the winter, but massive in August. 
+
+* **Which service do you choose and why?**
+
+::: {.callout-tip collapse="true"}
+## Answer Key: Scenario B
+**Cloud Run (Serverless Containers)**
+
+* **The Why:** The massive traffic spikes in August and zero traffic in winter scream "Serverless" (scale-to-zero micro-billing). However, because it requires custom C++ system libraries to render the maps, standard App Engine won't work. They must package the OS, the C++ libraries, and the Python code into a Docker container and hand it to Cloud Run. 
+:::
+
+---
+
+### Scenario C: The Missoula Live Music Dashboard
+> A group of computer science undergrads built a lightweight Python/Flask web dashboard that scrapes local venue websites to display all the live concerts happening in town this weekend. It uses entirely standard Python libraries. They just want to get a URL live quickly so their friends can use it, and they don't want to spend time managing servers or writing Dockerfiles.
+
+* **Which service do you choose and why?**
+
+::: {.callout-tip collapse="true"}
+## Answer Key: Scenario C
+**App Engine (PaaS)**
+
+* **The Why:** This is a standard web application using standard libraries. App Engine is the ultimate "easy button" here. They just give Google the folder of Python code, and Google handles the HTTPS, the load balancing, and the scaling automatically. 
+:::
+
+---
+
+### Scenario D: The Drone Imagery Pipeline
+> A geography grad student is flying drones over the Clark Fork River every morning to monitor water levels. When the drone lands, it automatically dumps hundreds of high-res photos into a Cloud Storage bucket. The student needs a script to automatically extract the GPS coordinates from the EXIF data of each photo the moment it hits the bucket and save those coordinates to a database. 
+
+* **Which service do you choose and why?**
+
+::: {.callout-tip collapse="true"}
+## Answer Key: Scenario D
+**Cloud Run Functions (FaaS)**
+
+* **The Why:** This is the definition of "Cloud Glue." It is an asynchronous, invisible background task triggered by a specific event (a file dropping into a storage bucket). It doesn't need to be a full web application with routing; it just needs to wake up, execute a single fast task, and go back to sleep.
+:::
