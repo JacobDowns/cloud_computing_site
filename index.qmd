@@ -38,8 +38,10 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lab 5 — Jetstream2 Wildfire Simulator](lab5/index.qmd)
 - [Lab 6 — Creating a VM via Terraform](lab6/index.qmd)
 - [Lab 7 — Compute Engine and App Engine](lab7/index.qmd)
+- [Lab 8 — Practicing Cloud Run](lab8/index.qmd)
 
 ## Homeworks ([all](homeworks.qmd)) {#homeworks}
 
-- [Homework 1 — The Gatekeeper](homework1/index.qmd)
-- [Project 1 — Choose Your Own Adventure](project1/index.qmd)
+- [The Gatekeeper](homework1/index.qmd)
+- [Midterm Project — Choose Your Own Adventure](project1/index.qmd)
+- [Final Project — Orchestrating GCP](project2/index.qmd)
