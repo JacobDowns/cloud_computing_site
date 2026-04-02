@@ -48,9 +48,9 @@ This project is broken into three phases to ensure you are on the right track.
 
 Before you write a single line of code, you must submit a brief (a few paragraphs) design document. 
 
-1.  **The Concept:** A one-paragraph summary of what your application does and who the user is.
+1.  **The Concept:** A one-paragraph summary of what your application does or who the intended user is.
 2.  **The Architecture:** A list (or visual diagram) of the specific GCP services you will use and exactly how they communicate with each other.
-3.  **The Cost Estimate:** You must estimate the monthly cost of running your infrastructure. You can use the [Google Cloud Pricing Calculator](https://cloud.google.com/products/calculator) or prompt an LLM (like Gemini or ChatGPT) with your exact architecture to help generate a cost breakdown. 
+3.  **The Cost Estimate:** You must estimate the monthly cost of running your infrastructure. You can use the [Google Cloud Pricing Calculator](https://cloud.google.com/products/calculator) or prompt an LLM (like Gemini or ChatGPT) with your architecture to help generate a cost breakdown. 
     * *Note: I am looking to ensure you aren't accidentally provisioning a \$400/month GPU instance that will drain your credits in three days! LLMs can often help you generate a reasonable draft of a price estimate, but it's good to verify pricing with the calculator if possible.*
 
 ### Deliverable 2: The Live Demo (Finals Week)
@@ -61,7 +61,7 @@ During our scheduled final exam slot, you will give a short ($\approx$ 10 minute
 1.  **The Pitch:** Briefly explain your application's purpose.
 2.  **The Live Demo:** Show the class your working application in real-time. 
 3.  **The Console Tour:** Open the Google Cloud Console live on screen and show how your infrastructure is actually running (show us the active Cloud Run service, the populated Firestore database, etc.).
-4.  **The Post-Mortem:** Explain one major technical roadblock you hit during development (e.g., an IAM permission error, a CORS issue, a container crash) and exactly how you fixed it.
+4.  **The Post-Mortem:** Explain any major technical difficulties you encountered (e.g., an IAM permission error, a container crash) and exactly how you fixed it. Explain how you set up your infrastructure. Did you use the gcloud CLI, Terraform, the web UI, or a mixture?
 
 ### Deliverable 3: The Technical Write-Up & Teardown
 **Due: Wednesday May 6**
@@ -73,7 +73,7 @@ Because I will not have direct IAM access to your Google Cloud environments, you
     * A technical explanation of how data flows through your GCP architecture.
     * Screenshots of your application working.
     * Screenshots of your GCP Console showing your deployed services and data.
-3.  **The Teardown Proof:** A `cleanup.sh` script containing the exact `gcloud` commands required to delete your entire project infrastructure so you do not get billed over winter break. *(If you use Terraform later in the semester, a `terraform destroy` command is sufficient).*
+3.  **The Teardown Proof:** A `cleanup.sh` script containing the exact `gcloud` commands required to delete your entire project infrastructure so you do not get billed over winter break. *(If you use Terraform, a `terraform destroy` command is sufficient).*
 
 ------------------------------------------------------------------------
 
