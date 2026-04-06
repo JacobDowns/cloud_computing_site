@@ -26,7 +26,8 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 8 — Jetstream2 (Research Cloud)](lecture8/index.qmd)
 - [Lecture 9 — Stateful App & Security Concerns](lecture9/index.qmd)
 - [Lecture 10 — OpenStack](lecture10/index.qmd)
-- [Lecture 11 — Welcome to Google Cloud](lecture11/index.qmd)
+- [Lecture 11 — The GCP Compute Continuum](lecture11/index.qmd)
+
 
 ## Labs ([all](labs.qmd)) {#labs}
 
@@ -36,8 +37,11 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lab 4 — Dockerfile Swap](lab4/index.qmd)
 - [Lab 5 — Jetstream2 Wildfire Simulator](lab5/index.qmd)
 - [Lab 6 — Creating a VM via Terraform](lab6/index.qmd)
+- [Lab 7 — Compute Engine and App Engine](lab7/index.qmd)
+- [Lab 8 — Practicing Cloud Run](lab8/index.qmd)
 
 ## Homeworks ([all](homeworks.qmd)) {#homeworks}
 
-- [Homework 1 — The Gatekeeper](homework1/index.qmd)
-- [Project 1 — Choose Your Own Adventure](project1/index.qmd)
+- [The Gatekeeper](homework1/index.qmd)
+- [Midterm Project — Choose Your Own Adventure](project1/index.qmd)
+- [Final Project — Orchestrating GCP](project2/index.qmd)

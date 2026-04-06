@@ -1,0 +1,94 @@
+---
+title: "Final Project: Cloud Systems Architecture"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — The Capstone Objective
+
+For the first half of this semester, you learned the raw mechanics of cloud infrastructure—how to spin up VMs, configure firewalls, and deploy containers. 
+
+- For your final project, you will transition from a *System Administrator* to a *Cloud Architect*. Your objective is to design, budget, and deploy a complete application on Google Cloud. 
+- You have total creative freedom over *what* your application does (e.g., a geospatial data pipeline, a local event scraper, an AI microservice), but you must strictly adhere to professional architectural constraints. 
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: The "Menu of Constraints"
+
+In industry, you rarely deploy an application onto a single server. Modern cloud applications are decoupled—broken into specific services that talk to one another. To receive full credit, your architecture must meet the following criteria:
+
+::: {.callout-important collapse="false"}
+## config.sys — Architectural Requirements
+
+**1. The Rule of Three (Minimum)**
+
+- Your project must meaningfully orchestrate at least **three** distinct Google Cloud services. For example, your architecture should include:
+
+    - **A Compute Layer:** (e.g., Cloud Run, App Engine, or Compute Engine).
+    - **A Data/State Layer:** (e.g., Firestore, Cloud SQL, BigQuery, or Cloud Storage).
+    - **An Event/Background Layer:** (e.g., Cloud Run Functions, Eventarc, or Pub/Sub).
+
+**2. The "No Monolith" Clause**
+
+You may not build a single, monolithic script that does everything. Your application must be decoupled. For example, your frontend web interface should not be running in the exact same Python loop as your database ingestion script. 
+
+**3. State Persistence**
+
+Your application must save or retrieve data. If your container restarts or your VM reboots, the data must survive. You cannot just use local RAM or local temporary disk space to store user data.
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: Project Deliverables
+
+This project is broken into three phases to ensure you are on the right track.
+
+### Deliverable 1: The Architecture Pitch & Budget (The Check-In)
+**Due: Thursday April 16**
+
+Before you write a single line of code, you must submit a brief (a few paragraphs) design document. 
+
+1.  **The Concept:** A one-paragraph summary of what your application does or who the intended user is.
+2.  **The Architecture:** A list (or visual diagram) of the specific GCP services you will use and exactly how they communicate with each other.
+3.  **The Cost Estimate:** You must estimate the monthly cost of running your infrastructure. You can use the [Google Cloud Pricing Calculator](https://cloud.google.com/products/calculator) or prompt an LLM (like Gemini or ChatGPT) with your architecture to help generate a cost breakdown. 
+    * *Note: I am looking to ensure you aren't accidentally provisioning a \$400/month GPU instance that will drain your credits in three days! LLMs can often help you generate a reasonable draft of a price estimate, but it's good to verify pricing with the calculator if possible.*
+
+### Deliverable 2: The Live Demo (Finals Week)
+**Due: Wednesday May 6**
+
+During our scheduled final exam slot, you will give a short ($\approx$ 10 minute) presentation to the class. 
+
+1.  **The Pitch:** Briefly explain your application's purpose.
+2.  **The Live Demo:** Show the class your working application in real-time. 
+3.  **The Console Tour:** Open the Google Cloud Console live on screen and show how your infrastructure is actually running (show us the active Cloud Run service, the populated Firestore database, etc.).
+4.  **The Post-Mortem:** Explain any major technical difficulties you encountered (e.g., an IAM permission error, a container crash) and exactly how you fixed it. Explain how you set up your infrastructure. Did you use the gcloud CLI, Terraform, the web UI, or a mixture?
+
+### Deliverable 3: The Technical Write-Up & Teardown
+**Due: Wednesday May 6**
+
+Because I will not have direct IAM access to your Google Cloud environments, your codebase and documentation must serve as your final proof of execution. You will submit a link to your GitHub repository (or a zipped folder) containing:
+
+1.  **The Codebase:** All application code, Dockerfiles, and `requirements.txt` files.
+2.  **The `README.md` Write-Up:**
+    * A technical explanation of how data flows through your GCP architecture.
+    * Screenshots of your application working.
+    * Screenshots of your GCP Console showing your deployed services and data.
+3.  **The Teardown Proof:** A `cleanup.sh` script containing the exact `gcloud` commands required to delete your entire project infrastructure so you do not get billed over winter break. *(If you use Terraform, a `terraform destroy` command is sufficient).*
+
+------------------------------------------------------------------------
+
+## Part 3: Grading Rubric
+
+::: {.callout-tip collapse="false"}
+## rubric.xls — Point Distribution
+
+| Category | Description | Weight |
+|:---|:---|:---:|
+| **The Pitch & Budget** | Did you submit a viable architecture and an accurate, realistic cost estimate? | 15% |
+| **Architectural Complexity** | Did you successfully integrate at least 3 distinct GCP services? Is the app decoupled? | 30% |
+| **Functional Demo** | Does the application actually work during the live presentation? | 25% |
+| **Technical Write-Up** | Is the architecture clearly documented with screenshots and a teardown script? | 20% |
+| **The Post-Mortem** | Can you articulate a technical challenge and your debugging process? | 10% |
+
+**Total:** 100%
+:::

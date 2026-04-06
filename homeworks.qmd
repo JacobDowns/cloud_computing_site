@@ -8,7 +8,7 @@ listing:
   fields: [title]
   field-links: [title]
   field-display-names:
-    title: ""
+    title: "All Homeworks"
   filter-ui: false
   sort-ui: false
 ---
