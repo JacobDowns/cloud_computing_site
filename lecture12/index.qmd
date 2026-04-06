@@ -116,7 +116,7 @@ gcloud storage cp /local/path/to/wizard.jpg gs://[YOUR-PROJECT]-player-media/
 
 -   By default, buckets are entirely private.
 -   **The "Public" Way (Basic):** You can grant `allUsers` the `objectViewer` role. This makes every file in the bucket accessible to the entire internet.
--   **The "Signed URL" Way (Professional):** You keep the bucket **private**. No one can see the files except your App Engine code (using its Service Account badge). Your code then generates a temporary "VIP pass" (Signed URL) for the user's browser. **We will use this method for our demo.**
+-   **The "Signed URL" Way** You keep the bucket private. No one can see the files except your App Engine code (using its Service Account badge). Your code then generates a temporary "VIP pass" (Signed URL) for the user's browser.
 
 ::: panel-tabset
 ## Mac / Linux / Cloud Shell
