@@ -27,6 +27,7 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 9 — Stateful App & Security Concerns](lecture9/index.qmd)
 - [Lecture 10 — OpenStack](lecture10/index.qmd)
 - [Lecture 11 — The GCP Compute Continuum](lecture11/index.qmd)
+- [Lecture 12 — The GCP Storage Continuum](lecture12/index.qmd)
 
 
 ## Labs ([all](labs.qmd)) {#labs}
