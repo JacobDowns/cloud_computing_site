@@ -16,9 +16,9 @@ title: "Lecture 12: Data & The Storage Continuum"
 ## Part 1: Unstructured Data (Google Cloud Storage)
 
 -   If you are dealing with files like images, videos, or anything that doesn't neatly fit into a spreadsheet row, you need Object Storage.
--   Cloud Storage (GCS) is an infinitely scalable hard drive in the cloud. You don't format file systems; you just drop objects into "Buckets."
--   **The Scale:** Gigabytes to Exabytes. It scales "infinitely".
--   **Rule of Thumb:** If your code uses standard file open/read/write operations (handling `.csv`, `.png`, or `.mp4` files), it belongs in Cloud Storage.
+-   Cloud Storage (GCS) is an infinitely scalable hard drive in the cloud. You don't format file systems; you just drop objects into buckets.
+-   **The Scale:** Gigabytes to Exabytes. It scales "infinitely". You can always add more to your buckets.
+-   **Rule of Thumb:** If your code uses standard file open/read/write operations (handling `.csv`, `.png`, or `.mp4` files), it likely belongs in Cloud Storage.
 
 ### The Storage Classes (Hot vs. Cold Data)
 
@@ -29,7 +29,8 @@ title: "Lecture 12: Data & The Storage Continuum"
 ## config.sys — The Cost Trade-off: Storage vs. Retrieval
 
 -   The colder the storage, the cheaper the monthly gigabyte cost.
--   **However, cold storage charges you a "Retrieval Fee" every time you access a file.** If you put a highly trafficked website logo in Archive storage, the retrieval fees will add up quickly.
+-   **However, cold storage charges you a "Retrieval Fee" every time you access a file.** 
+- If you put a highly trafficked website logo in Archive storage, the retrieval fees will add up quickly.
 
 | Storage Class | Intended Frequency | Monthly Storage Cost | Retrieval Cost |
 |:-----------------|:-----------------|:-----------------|:-----------------|
@@ -39,16 +40,19 @@ title: "Lecture 12: Data & The Storage Continuum"
 | **Archive** | Accessed less than once a year | Cheapest (~$0.001/GB) | **Highest Fee** |
 :::
 
-**A Use Case:** You are building the backend for a new multiplayer game.
+::: {.callout-note collapse="false"}
+## example.exe 
+Suppose you are building the backend for a new multiplayer game.
 
 -   **Standard:** You use this for player's custom avatars and live guild emblems, because they are loaded by other players every single day.
 -   **Archive:** You use this to store the massive 50GB server log files from three years ago. You only need to read these if there is a legal audit or a massive bug investigation, so you want them stored as cheaply as possible.
+:::
 
 ### The Hidden Costs: Network & Transfer Fees
 
-In cloud architecture, we often say that **"Storage is cheap, but movement is expensive."** The network and access fees are often the "hidden" part of a cloud bill that can easily exceed the actual cost of storing the data itself.
-
-To understand these costs, you have to look at the direction of the data and the boundaries it crosses:
+- In cloud architecture, we often say that **"Storage is cheap, but movement is expensive."** 
+- The network and access fees are often the "hidden" part of a cloud bill that can easily exceed the actual cost of storing the data itself.
+- To understand these costs, you have to look at the direction of the data and the boundaries it crosses:
 
 1.  **Ingress (Moving Data IN):** Almost always **Free**. Cloud providers want to make it as easy as possible for you to bring your data into their ecosystem.
 2.  **Egress to the Internet:** This is the most expensive. If your app serves images from a bucket to users' browsers, you pay for every gigabyte sent over the open web.
@@ -57,12 +61,14 @@ To understand these costs, you have to look at the direction of the data and the
 
 ::: {.callout-warning collapse="false"}
 ## budget.exe — Beware the "Viral App" Trap
-Imagine you host a funny 10MB video in a Standard Cloud Storage bucket. Storing that file costs you less than a penny a month. 
-However, if your app goes viral and 1 million people download that video, you are suddenly paying for **10,000 GB of Internet Egress**. What looked like a cheap storage solution just generated a massive network bill!
+- Imagine you host 10MB video in a Standard Cloud Storage bucket. Storing that file costs you less than a penny a month. 
+- However, if your app goes viral and 1 million people download that video, you are suddenly paying for **10,000 GB of Internet Egress**. 
+- This could easily cost around a grand in egress costs. 
+- What looked like a cheap storage solution just generated a massive network bill!
 :::
 
-::: {.callout-note collapse="false"}
-## security.sys — What is a Service Account?
+::: {.callout-note collapse="true"}
+## aside.sys — What is a Service Account?
 
 Throughout this course, you will hear the term **Service Account**.
 
@@ -114,9 +120,9 @@ gcloud storage cp /local/path/to/wizard.jpg gs://[YOUR-PROJECT]-player-media/
 
 **2. Handling Permissions (IAM):**
 
--   By default, buckets are entirely private.
+-   By default, buckets are entirely private. To allow apps permission to use the data, there are a couple of options. 
 -   **The "Public" Way (Basic):** You can grant `allUsers` the `objectViewer` role. This makes every file in the bucket accessible to the entire internet.
--   **The "Signed URL" Way** You keep the bucket private. No one can see the files except your App Engine code (using its Service Account badge). Your code then generates a temporary "VIP pass" (Signed URL) for the user's browser.
+-   **The "Signed URL" Way** You keep the bucket private. No one can see the files except your App Engine code (using its Service Account badge). Your code then generates a temporary signed URL for the user's browser.
 
 ::: panel-tabset
 ## Mac / Linux / Cloud Shell
@@ -143,15 +149,15 @@ gcloud storage buckets remove-iam-policy-binding gs://[YOUR-PROJECT]-player-medi
 
 ## Part 2: Structured Relational Data (Cloud SQL & Spanner)
 
-When your data is highly structured, strictly typed, and requires complex relationships (e.g., Users, Roles, Permissions, Transactions), you need a Relational Database (RDBMS).
+When your data is highly structured, strictly typed, and requires complex relationships (e.g., Users, Roles, Permissions, Transactions), you will likely reach for a Relational Database.
 
 ### Option A: Cloud SQL (The Standard)
 
-Cloud SQL is Google's managed service for MySQL, PostgreSQL, and SQL Server. Google handles the backups, the software patching, and the hard drive provisioning automatically.
-
+- Cloud SQL is Google's managed service for MySQL, PostgreSQL, and SQL Server. 
+- Google handles the backups, the software patching, and the hard drive provisioning automatically.
 -   **The Scale:** Up to 64TB of data per instance. Handles standard web traffic perfectly.
 -   **The Cost:** **WARNING.** Cloud SQL is *provisioned*, not serverless. A basic 1-CPU instance costs about **$10 to $15 per month** and bills you 24/7 even if no one is using it.
--   **Rule of Thumb:** Use this when you have strict data integrity needs and your schema is well-defined. If a player is buying an item with premium currency, you *need* the strict ACID compliance of SQL so they can't double-spend their gold!
+-   **Rule of Thumb:** Use this when you have strict data integrity needs and your schema is well-defined. 
 
 ::: {.callout-note collapse="false"}
 ## gui.exe — The Web Console vs. The CLI
@@ -169,7 +175,7 @@ Cloud SQL is Google's managed service for MySQL, PostgreSQL, and SQL Server. Goo
 
 Let's actually spin up a PostgreSQL database and create a schema.
 
-> Note: I highly recommend running this in the Google Cloud Shell built into the web browser, as it comes pre-configured with the correct network authorizations to connect to Cloud SQL.
+> Note: I highly recommend running this in the Google Cloud Shell built into the web browser, as it comes pre-configured with the correct network authorizations to connect to Cloud SQL.Alternatively, feel free to use the UI to sping up a DB instance. 
 
 **1. Provision the Database Server (This takes about 5 minutes)**
 
@@ -257,7 +263,7 @@ Cloud SQL has a physical limit: it mostly lives on one machine in one region. **
 
 -   **The Scale:** Petabytes of data. Millions of queries per second across the globe.
 -   **The Cost:** Starting at $\approx$ **$700 per month**.
--   **Rule of Thumb:** You will likely never use Spanner for a class project. It is designed for massive global enterprises (think global banking, or a game like *Destiny 2* tracking millions of player inventories worldwide).
+-   **Rule of Thumb:** You will likely never use Spanner for a class project. It is designed for massive global enterprises (think global banking, or a large multiplayer game). 
 
 ------------------------------------------------------------------------
 
@@ -268,19 +274,27 @@ Cloud SQL has a physical limit: it mostly lives on one machine in one region. **
 
 ![SQL vs NoSQL structure comparison](images/blog149_inner1_a996839b4f.jpg)
 
+
+### How is Data Organized?
+- Instead of tables and rows, Firestore organizes data hierarchically into **Collections** and **Documents**:
+-   **Document:** A lightweight record that contains fields, which map to values (very similar to a JSON object). 
+-   **Collection:** A container for your documents. 
+-   **The Hierarchy:** You can think of a Collection as a folder, and a Document as a text file inside that folder.
 -   **The Scale:** Scales automatically to handle millions of concurrent users.
 -   **The Cost:** Serverless billing (Pay per read/write). **Generous Free Tier:** 50,000 free document reads *per day*.
--   **Rule of Thumb:** This is a good choice choice for student projects. If you are building a flexible web or mobile app, use Firestore.
+-   **Rule of Thumb:** This is a good choice for student projects. If you are building a flexible web or mobile app, Firestore is a good option.
 
-**The Use Case:**
+::: {.callout-note collapse="false"}
+## example.exe -- A Use Case
 
 -   Suppose you need a database for player profiles and active buffs.
 -   One player might have a JSON document containing their active quests and a "Poisoned" status effect.
 -   Another player might have a pet dragon with its own unique stats attached to their document.
 -   Because the shape of this data constantly changes based on gameplay, Firestore is perfect.
+:::
 
-**Best Practice: Environment Isolation**
-Instead of using the hidden `(default)` database, we will explicitly create a named database (`player-data`). This allows you to separate projects, avoid legacy configuration traps, and clearly isolate your application data.
+### Best Practice: Environment Isolation
+- Instead of using the hidden `(default)` database, we will explicitly create a named database (`player-data`). - This allows you to separate projects, avoid legacy configuration traps, and clearly isolate your application data.
 
 ::: panel-tabset
 ## Mac / Linux / Cloud Shell
@@ -297,6 +311,25 @@ gcloud firestore databases create --database="player-data" --location=nam5 --typ
 gcloud firestore databases create --database="player-data" --location=nam5 --type=firestore-native
 ```
 :::
+
+### Adding Data Manually (The Web Console)
+- While you will typically write code to insert data, the easiest way to understand the NoSQL structure is to manually construct a document using the Google Cloud Web Console. 
+- To ensure our data works perfectly with the App Engine code we will write in Part 6, we need to create a nested object (a dictionary within a dictionary) called a **Map**.
+
+1. Navigate to **Firestore -> Databases** in the Google Cloud Console.
+2. Click on your new `player-data` database to open the data viewer.
+3. Click **+ Start Collection**.
+4. Set the Collection ID to `player_profiles`.
+5. Set the Document ID to `LeeroyJenkins` *(Note: This must exactly match the SQL username we inserted earlier!)*.
+6. Add the first flat field: 
+   - Name: `equipped_weapon` | Type: `string` | Value: `Epic Staff`
+7. Click **+ Add field** to add our nested object: 
+   - Name: `stats` | Type: `map`
+8. Inside the new `stats` map, add a nested field: 
+   - Name: `str` | Type: `number` | Value: `42`
+9. Click **Save**. 
+
+You've just built a nested NoSQL document! When we query this in Python later, we can dynamically pull out their weapon and strength variables.
 
 ------------------------------------------------------------------------
 
@@ -327,12 +360,12 @@ When you draft your architecture for the final project, use this decision tree t
 
 ------------------------------------------------------------------------
 
-## Part 6: The Grand Finale Demo (Wiring It All Together on App Engine)
+## Part 6: Wiring It All Together on App Engine
 
 - Let's look at how a single Python backend API can leverage all three of our primary storage systems simultaneously. 
 - To avoid overwriting any existing apps you might have running, we are going to deploy this as a **Named Service** called `cloud-data-demo`.
 
-::: {.callout-warning collapse="false"}
+::: {.callout-warning collapse="true"}
 ## deploy.sys — Troubleshooting "USER_DISABLED"
 If you get an error saying `Deploying to stopped apps is not allowed`, it means your App Engine application is disabled. Go to the **App Engine Settings** in the Cloud Console and click **Enable Application** before deploying.
 :::
@@ -406,7 +439,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID `
 
 - Create a directory for your app. 
 - Notice the `max_instances: 1` line.
-— This is a critical safety feature to prevent App Engine from spinning up dozens of servers and eating your student credits.
+- This is a handy safety feature to prevent App Engine from spinning up dozens of servers and eating your student credits.
 
 **`requirements.txt`**
 

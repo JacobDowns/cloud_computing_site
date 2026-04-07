@@ -86,7 +86,7 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "1",
 
 -   Look at the `CMD` line above. By default, Gunicorn is optimized for lightweight websites.
 -   It expects responses in under 30 seconds and spins up multiple "workers" (copies of your app) to handle traffic.
--   **The default behavior can cause your container to crash.** - Loading a neural network into memory takes time (hence `--timeout 120`). If Gunicorn tries to spin up 3 workers, they will all try to load the $\approx$ 15MB model into RAM simultaneously, causing a memory spike.
+-   **The default behavior can cause your container to crash.** - Loading a neural network into memory takes time (hence `--timeout 120`). If Gunicorn tries to spin up 3 workers, they will all try to load the $\approx$ 25MB model into RAM simultaneously, causing a memory spike.
 -   We use `--workers 1` to force it to load the model only once, and use lightweight `--threads 8` to handle concurrent users safely.
 :::
 
