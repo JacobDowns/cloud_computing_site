@@ -82,8 +82,8 @@ gcloud firestore databases create --database="geology-vault" --location=nam5 --t
     -   Name: `location` \| Type: `map`
 6.  Inside the new `location` map, add the nested fields:
     -   Name: `county` \| Type: `string` \| Value: `Granite`
-    -   Name: `lat` \| Type: `number` \| Value: `46.7`
-    -   Name: `lng` \| Type: `number` \| Value: `-113.7`
+    -   Name: `lat` \| Type: `double` \| Value: `46.7`
+    -   Name: `lng` \| Type: `double` \| Value: `-113.7`
 7.  Click **Save**.
 
 ------------------------------------------------------------------------
