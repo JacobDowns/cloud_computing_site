@@ -360,7 +360,7 @@ Because Firestore and Cloud Storage are serverless, they do not incur a monthly 
 # Delete the App Engine Service
 gcloud app services delete cloud-data-lab
 
-# Delete the Firestore Database
+# Delete the Firestore Database (if used)
 gcloud firestore databases delete --database=geology-vault
 
 # Delete the Bucket (and all images inside)
@@ -373,7 +373,7 @@ gcloud storage rm -r gs://[YOUR-PROJECT]-specimen-vault
 # Delete the App Engine Service
 gcloud app services delete cloud-data-lab
 
-# Delete the Firestore Database
+# Delete the Firestore Database (if used)
 gcloud firestore databases delete --database=geology-vault
 
 # Delete the Bucket (and all images inside)
