@@ -1,0 +1,348 @@
+---
+title: "Lab 10: Infrastructure as Code & User Authorization"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — Lab Objectives
+
+In Lab 9, we used a sequence `gcloud` commands to build a digital rockhounding vault. If you deleted your infrastructure (as you should have!), rebuilding it manually would be a chore.
+
+In this lab, we will:
+
+1.  Use **Terraform** to automatically recreate our entire database, storage bucket, and IAM permissions in seconds.
+2.  Update our Rockhound App to support user Authorization.
+3.  Use **Identity-Aware Proxy (IAP)** to secure the app and allow users to mark their geological finds as either "Public" (visible to the everyone) or "Private" (visible only to them).
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: The Terraform Refresher
+
+::: {.callout-tip collapse="false"}
+## Declarative vs. Imperative
+
+- In previous labs, we used **Imperative** commands (e.g., `gcloud storage buckets create...`). 
+- Imperative means telling the cloud *exactly how* to do something, step by step.
+- Recall that Terraform uses a **Declarative** model. 
+- You write a configuration file that describes what the final architecture *should* look like, and Terraform figures out how to build it.
+- If the bucket already exists, Terraform does nothing. If it doesn't, Terraform creates it. 
+- This is the foundation of **Infrastructure as Code (IaC)**.
+:::
+
+### 1.1 The Configuration File
+
+- Open your Google Cloud Shell. Create a new directory for this lab, and inside it, create a file named `main.tf`. 
+- Paste the following code. Notice how it provisions our APIs, Bucket, Database, and IAM roles all in one file!
+
+**`main.tf`**
+```hcl
+variable "project_id" {
+  description = "Your Google Cloud Project ID"
+  type        = string
+}
+
+provider "google" {
+  project = var.project_id
+  region  = "us-west1"
+}
+
+# 1. Enable IAM Credentials API
+resource "google_project_service" "iam_credentials" {
+  service            = "iamcredentials.googleapis.com"
+  disable_on_destroy = false
+}
+
+# 2. Provision the Private Bucket
+resource "google_storage_bucket" "specimen_vault" {
+  name          = "${var.project_id}-specimen-vault"
+  location      = "US-WEST1"
+  force_destroy = true 
+}
+
+# 3. Provision the Named Firestore Database
+resource "google_firestore_database" "database" {
+  name        = "geology-vault"
+  location_id = "nam5"
+  type        = "FIRESTORE_NATIVE"
+}
+
+# 4. Grant App Engine the ability to Sign URLs and Access Storage
+resource "google_project_iam_binding" "token_creator" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  members = ["serviceAccount:${var.project_id}@appspot.gserviceaccount.com"]
+}
+
+resource "google_storage_bucket_iam_binding" "bucket_admin" {
+  bucket = google_storage_bucket.specimen_vault.name
+  role   = "roles/storage.objectAdmin"
+  members = ["serviceAccount:${var.project_id}@appspot.gserviceaccount.com"]
+}
+```
+
+### 1.2 Deploying the Infrastructure
+
+In your Cloud Shell terminal, run these commands to execute your Terraform script. *(Note: We use Cloud Shell because it automatically injects your Google login credentials into Terraform).*
+
+```bash
+# Set your project ID as an environment variable for Terraform
+export TF_VAR_project_id=$(gcloud config get-value project)
+
+# Initialize Terraform (downloads the Google Cloud plugins)
+terraform init
+
+# Apply the configuration to build the architecture
+terraform apply -auto-approve
+```
+*Wait about 2-3 minutes for the script to finish building your environment.*
+
+### 1.3 How Terraform Remembers
+
+If you look in your Cloud Shell directory, you will notice a new, hidden file called `terraform.tfstate`.
+
+::: {.callout-important collapse="false"}
+## State & Persistence Warning
+
+-   **The Receipt:** The `.tfstate` file is Terraform's memory. It is a highly detailed receipt of every cloud resource it just built.
+-   **The Danger:** **Do NOT delete this file.** If you delete it, Terraform gets "amnesia" and forgets it built your project. You will be unable to easily tear down your infrastructure later.
+-   **Cloud Shell Persistence:** Google Cloud Shell provides a 5GB persistent `$HOME` directory. As long as you saved your `main.tf` and `.tfstate` files inside your home folder, they will be waiting for you the next time you log in—even if you close your laptop for the weekend. *(Note: Cloud Shell wipes your home directory only if you are inactive for 120 consecutive days).*
+:::
+
+------------------------------------------------------------------------
+
+## Part 2: The Multi-User "Field Notes" App
+
+Now that our infrastructure is back online, we need to update our Python application.
+
+::: {.callout-tip collapse="false"}
+## How IAP Passes Identity to Code
+
+When we turn on **Identity-Aware Proxy (IAP)** in Part 3, IAP acts as a bouncer. If a user successfully logs in, IAP forwards their traffic to our App Engine code and secretly attaches a special HTTP header: `X-Goog-Authenticated-User-Email`. We will use this email inside our Python code to tag who owns which rock, and filter the database!
+:::
+
+### 2.1 The Application Files
+
+Create the `requirements.txt`, `app.yaml`, and `main.py` files in the same directory as your Terraform file.
+
+**`requirements.txt`**
+```text
+Flask==3.0.0
+google-cloud-storage==2.14.0
+google-cloud-firestore==2.14.0
+google-auth==2.23.3
+requests==2.31.0
+```
+
+**`app.yaml`**
+```yaml
+runtime: python311
+service: cloud-data-lab
+automatic_scaling:
+  max_instances: 1
+```
+
+**`main.py`**
+```python
+import os, uuid
+from flask import Flask, render_template_string, request, redirect
+from google.cloud import storage, firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
+import google.auth
+import google.auth.transport.requests
+
+app = Flask(__name__)
+PROJECT_ID = os.environ.get('GOOGLE_CLOUD_PROJECT')
+BUCKET_NAME = f"{PROJECT_ID}-specimen-vault"
+
+db = firestore.Client(database="geology-vault")
+storage_client = storage.Client()
+
+def get_current_user():
+    """Extracts the logged-in user's email provided by Identity-Aware Proxy."""
+    # IAP prepends 'accounts.google.com:' to the email, so we strip it out
+    email = request.headers.get('X-Goog-Authenticated-User-Email', '')
+    return email.replace('accounts.google.com:', '') if email else 'Anonymous'
+
+@app.route('/')
+def index():
+    current_user = get_current_user()
+    
+    # AuthZ: Query 1 - Get ONLY the community's public finds
+    public_docs = db.collection("specimens").where(filter=FieldFilter("is_public", "==", True)).stream()
+    public_specimens = [{"id": doc.id, **doc.to_dict()} for doc in public_docs]
+    
+    # AuthZ: Query 2 - Get ONLY the current user's private finds
+    private_docs = db.collection("specimens").where(filter=FieldFilter("owner_email", "==", current_user)).where(filter=FieldFilter("is_public", "==", False)).stream()
+    private_specimens = [{"id": doc.id, **doc.to_dict()} for doc in private_docs]
+    
+    html = """
+    <h1>Rockhound Vault</h1>
+    <p>Logged in as: <strong>{{ user }}</strong></p>
+    <hr>
+    
+    <h3>🌍 Public Community Finds</h3>
+    <ul>
+    {% for s in public_specimens %}
+        <li><strong>{{ s.mineral_type }}</strong> (Found by: {{ s.owner_email }}) - <a href="/specimen/{{ s.id }}">View</a></li>
+    {% else %}
+        <li><em>No public specimens yet.</em></li>
+    {% endfor %}
+    </ul>
+
+    <h3>🔒 My Private Vault</h3>
+    <ul>
+    {% for s in private_specimens %}
+        <li><strong>{{ s.mineral_type }}</strong> (Found in: {{ s.location.county }} County) - <a href="/specimen/{{ s.id }}">View</a></li>
+    {% else %}
+        <li><em>You have no private logs.</em></li>
+    {% endfor %}
+    </ul>
+    
+    <hr>
+    <h3>Log New Specimen</h3>
+    <form action="/add" method="post" enctype="multipart/form-data">
+        <input type="text" name="mineral_type" placeholder="Mineral (e.g., Beryl)" required><br><br>
+        <input type="text" name="county" placeholder="County (e.g., Missoula)" required><br><br>
+        <textarea name="notes" placeholder="Field notes..."></textarea><br><br>
+        <label>Upload Photo (Private GCS):</label><br>
+        <input type="file" name="image" accept="image/*" required><br><br>
+        
+        <input type="checkbox" name="is_public" id="is_public">
+        <label for="is_public"><strong>Make this find Public</strong> (Everyone can see it)</label><br><br>
+        
+        <button type="submit">Upload to Vault</button>
+    </form>
+    """
+    return render_template_string(html, user=current_user, public_specimens=public_specimens, private_specimens=private_specimens)
+
+@app.route('/add', methods=['POST'])
+def add_specimen():
+    current_user = get_current_user()
+    mineral = request.form.get('mineral_type')
+    county = request.form.get('county')
+    notes = request.form.get('notes')
+    is_public = 'is_public' in request.form # Returns True if checkbox was checked
+    image_file = request.files.get('image')
+    
+    filename = "default.jpg"
+    if image_file and image_file.filename != '':
+        filename = f"{uuid.uuid4().hex}.{image_file.filename.split('.')[-1]}"
+        storage_client.bucket(BUCKET_NAME).blob(filename).upload_from_file(image_file)
+        
+    doc_ref = db.collection("specimens").document()
+    doc_ref.set({
+        "mineral_type": mineral,
+        "notes": notes,
+        "image_path": filename,
+        "owner_email": current_user, # Save who created this!
+        "is_public": is_public,      # Save the privacy status!
+        "location": {"county": county, "lat": 0.0, "lng": 0.0}
+    })
+    
+    return redirect('/')
+
+@app.route('/specimen/<doc_id>')
+def view_specimen(doc_id):
+    doc = db.collection("specimens").document(doc_id).get()
+    if not doc.exists:
+        return "Specimen not found", 404
+        
+    data = doc.to_dict()
+    current_user = get_current_user()
+    
+    # SECURITY ENFORCEMENT: If it's private, and the current user doesn't own it, BLOCK ACCESS!
+    if not data.get('is_public') and data.get('owner_email') != current_user:
+        return "<h1>HTTP 403: Forbidden</h1><p>You do not have permission to view this private log.</p>", 403
+
+    blob = storage_client.bucket(BUCKET_NAME).blob(data.get('image_path', 'default.jpg'))
+    credentials, _ = google.auth.default()
+    credentials.refresh(google.auth.transport.requests.Request())
+    
+    img_url = blob.generate_signed_url(
+        version="v4", expiration=900, 
+        service_account_email=credentials.service_account_email or f"{PROJECT_ID}@appspot.gserviceaccount.com",
+        access_token=credentials.token
+    ) if blob.exists() else ""
+
+    html = """
+    <h1>{{ data.mineral_type }} {% if not data.is_public %} 🔒 {% endif %}</h1>
+    <p><strong>Logged by:</strong> {{ data.owner_email }}</p>
+    <p><strong>County:</strong> {{ data.location.county }}</p>
+    <p><strong>Notes:</strong> {{ data.notes }}</p>
+    {% if img_url %}<img src="{{ img_url }}" width="400" style="border: 3px solid #333;">{% endif %}
+    <br><br><a href="/">Back to Vault</a>
+    """
+    return render_template_string(html, data=data, img_url=img_url)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
+```
+
+------------------------------------------------------------------------
+
+## Part 3: Deployment and the Security Moat (IAP)
+
+### 3.1 Deploy the Application
+
+Deploy your updated code to App Engine.
+```bash
+gcloud app deploy
+```
+
+### 3.2 Establish the Identity-Aware Proxy (AuthN)
+
+Right now, your app is public. Anyone can visit it, and because they bypass the Google Login, the `get_current_user()` function will just return "Anonymous". Let's force them to authenticate.
+
+1.  Navigate to **APIs & Services -\> OAuth consent screen**.
+2.  Choose **External** (or Internal if prompted by a Workspace account), fill out an App Name and your Email, and save.
+3.  Navigate to **Security -\> Identity-Aware Proxy**.
+4.  Toggle IAP **ON** for your App Engine app.
+
+### 3.3 Grant Access to Your Users (AuthZ)
+
+We need to tell IAP who is allowed to enter the app.
+
+1.  In the IAP menu, check the box next to your App Engine app.
+2.  An **Info Panel** will open on the right side of your screen.
+3.  Click **Add Principal**.
+4.  Enter your email address (and a friend/classmate's email address if you want to test the public vs. private feature together!).
+5.  Assign the Role: **Cloud IAP -\> IAP-secured Web App User**.
+6.  Click **Save**.
+
+------------------------------------------------------------------------
+
+## Part 4: Testing & Teardown
+
+### 4.1 Test the Authorization Logic
+
+Visit your App Engine URL. 
+1.  You should be forced to log in with Google.
+2.  Your email should be displayed at the top of the dashboard.
+3.  Upload one **Private** specimen. Notice that it only appears under "My Private Vault".
+4.  Upload one **Public** specimen. Notice that it appears under the "Public Community Finds".
+5.  *(Optional)* If you granted access to a classmate, have them log in. They should see your Public find, but your Private find will be completely invisible to them!
+
+::: {.callout-note collapse="false"}
+## Lab Submission Requirements
+
+To receive full credit for Lab 10, submit a single PDF document containing:
+
+1.  **The Live URL:** Provide the direct link to your deployed `cloud-data-lab` App Engine service.
+2.  **The AuthN Screenshot:** A screenshot of the Google Login prompt before entering your app, proving IAP is active.
+3.  **The AuthZ Screenshot:** A screenshot of your dashboard showing at least one "Public" find and one "Private" find, with your email clearly visible at the top.
+:::
+
+### 4.2 Infrastructure Teardown
+
+To practice destroying infrastructure via code, we can use Terraform to delete everything we just built! Because Terraform kept a detailed receipt in the `terraform.tfstate` file, it knows exactly what to destroy in the correct order.
+
+In Cloud Shell, run:
+```bash
+terraform destroy -auto-approve
+```
+
+::: {.callout-warning collapse="false"}
+## Manual Cleanup Reminder
+
+Terraform will delete the bucket and IAM policies, but Google Cloud puts Firestore in a "locked" state by default to prevent accidental data deletion. You may still need to delete the `geology-vault` database manually from the Cloud Console, and run `gcloud app services delete cloud-data-lab --quiet` to clean up App Engine.
+:::

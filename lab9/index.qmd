@@ -371,12 +371,12 @@ gcloud storage buckets delete gs://[YOUR-PROJECT]-specimen-vault
 
 ``` powershell
 # Delete the App Engine Service
-gcloud app services delete cloud-data-lab --quiet
+gcloud app services delete cloud-data-lab
 
 # Delete the Firestore Database
-gcloud firestore databases delete geology-vault --quiet
+gcloud firestore databases delete --database=geology-vault
 
 # Delete the Bucket (and all images inside)
-gcloud storage buckets delete gs://[YOUR-PROJECT]-specimen-vault
+gcloud storage rm -r gs://[YOUR-PROJECT]-specimen-vault
 ```
 :::

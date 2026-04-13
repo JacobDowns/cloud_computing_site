@@ -5,7 +5,7 @@ title: "Lecture 13: Identity, Access, and the Zero-Trust Cloud"
 ::: {.callout-note collapse="false"}
 ## readme.txt — Lecture Objectives
 
--   In the early days of IT, security was a "Castle and Moat." If you were inside the corporate office building or logged into the university VPN, the network trusted you. 
+-   In the early days of IT, security was a "Castle and Moat." If you were inside the corporate office building or logged into the university VPN, the network trusted you.
 -   The cloud does not work this way. The cloud operates on a **Zero-Trust** model. Absolutely no one—and no piece of code—is trusted by default.
 -   Today, we are going to explore the Shared Security model, how Google Cloud manages identities across massive organizations, why we use robotic "Service Accounts," and how to easily drop a secure login portal in front of your applications.
 :::
@@ -18,23 +18,27 @@ When you deploy an application to an on-premises university server room, you are
 
 When you move to Google Cloud, security becomes a **shared responsibility**.
 
-* **Google's Responsibility (The Lower Layers):** Google handles the physical security of the data centers, the integrity of the underlying hardware network, and the default encryption of data on the physical disks.
-* **Your Responsibility (The Upper Layers):** You are responsible for securing the data itself. You control who (or what) has access to your data, which ports are open to the internet, and the security of your application code. 
+-   **Google's Responsibility (The Lower Layers):** Google handles the physical security of the data centers, the integrity of the underlying hardware network, and the default encryption of data on the physical disks.
+-   **Your Responsibility (The Upper Layers):** You are responsible for securing the data itself. You control who (or what) has access to your data, which ports are open to the internet, and the security of your application code.
 
 Google provides the tools (like IAM and Firewalls), but *you* must configure them correctly.
+
+![The shared responsible model for different categories. ](images/shared_responsibilities.svg){fig-align="center"}
 
 ------------------------------------------------------------------------
 
 ## Part 2: Cloud Identity & The Resource Hierarchy
 
-To manage access, we first have to understand how Google Cloud organizes its assets and its users. 
+To manage access, we first have to understand how Google Cloud organizes its assets and its users.
 
 ### 1. Cloud Identity (Managing the Humans)
-When you first start building, it is easy to just invite your teammates' `@gmail.com` accounts to your project. However, this becomes a nightmare for an organization. If an employee leaves, you have to manually track down every project they had access to and remove their Gmail account. 
+
+When you first start building, it is easy to just invite your teammates' `@gmail.com` accounts to your project. However, this becomes a nightmare for an organization. If an employee leaves, you have to manually track down every project they had access to and remove their Gmail account.
 
 **Cloud Identity** allows organizations to centrally manage users and groups (often tying into existing Active Directory or LDAP systems). If someone leaves the company, an admin disables their Cloud Identity account once, and their access to all cloud resources is instantly revoked.
 
 ### 2. The Resource Hierarchy
+
 Permissions in Google Cloud cascade downwards through a strict hierarchy. If you are granted access at a high level, you inherit that access for everything beneath it.
 
 1.  **Organization:** The root node (e.g., `umontana.edu`). *(Note: Personal Gmail users do not have an Organization node, which is why your personal projects start at the Project level!)*
@@ -49,31 +53,78 @@ Permissions in Google Cloud cascade downwards through a strict hierarchy. If you
 IAM is the system that answers one specific question: **"Who can do what, on which resource?"**
 
 ### The "Who" (Identities)
-An identity can be a Google Account, a Google Group, a Cloud Identity domain, or a **Service Account**.
+
+An **identity** can be a Google Account, a Google Group, a Cloud Identity domain, or a service account.
 
 ### The "What" (Roles)
-A **Permission** is a single, hyper-specific action (e.g., `compute.instances.start`). Because there are thousands of permissions, Google groups them into **Roles**. 
+
+A **Permission** is a single, hyper-specific action (e.g., `compute.instances.start`). Because there are thousands of permissions, Google groups them into **Roles**.
 
 There are three types of roles you can assign:
 
 ::: {.callout-warning collapse="false"}
-## Basic Roles (The Legacy Danger)
-Includes **Owner**, **Editor**, **Viewer**, and **Billing Administrator**.
-Basic roles are dangerously broad. An `Editor` on a project can modify almost *any* resource in that project. If several people are working on a project with sensitive data, Basic roles are usually too broad. 
+## Basic Roles
+
+-   Includes **Owner**, **Editor**, **Viewer**, and **Billing Administrator**.
+-   Basic roles are sometimes dangerously broad.
+-   An `Editor` on a project can modify almost *any* resource in that project.
+-   If several people are working on a project with sensitive data, basic roles are usually too broad.
 :::
 
 ::: {.callout-tip collapse="false"}
 ## Predefined Roles (The Standard)
-Specific Google Cloud services offer sets of predefined roles (e.g., `roles/compute.instanceAdmin`). This allows a user to perform a specific set of actions on specific resources without granting them sweeping project-wide access. This is the recommended approach for most teams.
+
+-   Specific Google Cloud services offer sets of predefined roles (e.g., `roles/compute.instanceAdmin`).
+-   This allows a user to perform a specific set of actions on specific resources without granting them sweeping project-wide access.
+-   This is the recommended approach for most teams.
 :::
 
 ::: {.callout-note collapse="false"}
 ## Custom Roles (The Precise Failsafe)
-If predefined roles are still too broad, you can hand-pick exact permissions to create a Custom Role. This adheres to the **Principle of Least Privilege** (giving someone *only* the permissions needed for their job). 
-*Caveats:* You must manually manage these permissions as Google updates its services. Also, Custom Roles can only be applied at the Project or Organization level—**they cannot be applied to Folders.**
+
+-   If predefined roles are still too broad, you can hand-pick exact permissions to create a Custom Role. This adheres to the principle of least privilege (giving someone *only* the permissions needed for their job).
+-   *Caveats:* You must manually manage these permissions as Google updates its services. Also, Custom Roles can only be applied at the Project or Organization level. They cannot be applied to Folders.
 :::
 
+### The IAM Matrix: Who gets What, and Where?
+
+To visualize how this plays out in the real world, here is a breakdown of common identities, the roles they are assigned, and the level of the hierarchy where they are applied:
+
+| Hierarchy Level | The "Who" (Identity) | The "What" (Role) | Why it makes sense |
+|:---|:---|:---|:---|
+| **Organization** | `security-team@umontana.edu` (Google Group) | `Organization Security Admin` | The security team needs to audit firewall rules across the entire university. |
+| **Folder** (`Engineering`) | `alice@example.com` (Human) | `Project Creator` | Alice manages the Engineering department and needs to spin up new projects for her team. |
+| **Project** (`Alpha`) | `bob@example.com` (Human) | `Compute Viewer` | Bob is a junior dev who needs to see the status of VMs, but shouldn't be allowed to delete them. |
+| **Resource** (A specific Bucket) | `app-engine-sa@...` (Service Account) | `Storage Object Creator` | The web app only needs permission to upload photos to this one specific bucket, nowhere else. |
+
+### Translating Theory to the Command Line
+
+Throughout this course, you have run several commands to fix "Permission Denied" errors. Now that you understand the theory, let's deconstruct what you were actually doing.
+
+#### 1. Enabling APIs: The Prerequisite to IAM
+Before you can even assign a role for a service (like Secret Manager or IAM Credentials), you usually have to run a command like `gcloud services enable secretmanager.googleapis.com`. But what is this *actually* doing under the hood?
+
+* **Opening the Firewall:** In a Zero-Trust environment, your project doesn't even have permission to *talk* to Google's internal servers. Enabling the API opens a specific network pathway.
+* **Creating Google-Managed Service Accounts:** Often, enabling an API automatically creates a hidden, Google-owned Service Account (called a **Service Agent**) inside your project. This gives Google the necessary permissions to perform background tasks on your behalf (like securely encrypting your secrets).
+* **Registering with IAM:** It registers the service with your project's IAM controller so you can start assigning roles related to it.
+* **Starting the Billing Meter:** It tells Google to start tracking usage for that specific tool.
+
+#### 2. Deconstructing the Policy Binding Command
+When your App Engine code crashed trying to read a database password in our previous lecture, you ran a policy binding command. Notice how it perfectly maps to the **Where, Who, and What** of IAM:
+
+```bash
+# 1. WHERE (The Resource Level - in this case, the specific secret)
+gcloud secrets add-iam-policy-binding game-db-pass \
+
+# 2. WHO (The Identity - our robotic App Engine ID badge)
+    --member="serviceAccount:[PROJECT_ID]@appspot.gserviceaccount.com" \
+    
+# 3. WHAT (The Role - the exact predefined permissions needed)
+    --role="roles/secretmanager.secretAccessor"
+```
+
 ### Interactive IAM Policy Evaluator
+
 Use the controls below to build an IAM policy. Select **Who** gets the access, **Where** in the hierarchy they get it, and **What** role they are granted. Watch how the permissions cascade downwards!
 
 ```{ojs}
@@ -155,59 +206,69 @@ html`
 
 ## Part 4: Service Accounts Deep Dive
 
-We know that **Service Accounts** are "ID Badges for Robots" (they use cryptographic keys instead of passwords so that VMs and App Engine code can authenticate to other services). 
+We know that **Service Accounts** are "ID Badges for Robots" (they use cryptographic keys instead of passwords so that VMs and App Engine code can authenticate to other services).
 
 However, there is a mind-bending concept you must understand: **A Service Account is both an Identity AND a Resource.**
 
-* **As an Identity:** A Service Account can be granted the `Instance Admin` role, allowing your App Engine code to spin up new VMs.
-* **As a Resource:** Because it is a resource, it has its own IAM policies! This means Alice can be granted the `Editor` role *on the Service Account*, allowing her to manage its cryptographic keys, while Bob is granted the `Viewer` role *on the Service Account*, allowing him only to see that it exists.
+-   **As an Identity:** A Service Account can be granted the `Instance Admin` role, allowing your App Engine code to spin up new VMs.
+-   **As a Resource:** Because it is a resource, it has its own IAM policies! This means Alice can be granted the `Editor` role *on the Service Account*, allowing her to manage its cryptographic keys, while Bob is granted the `Viewer` role *on the Service Account*, allowing him only to see that it exists.
 
 ------------------------------------------------------------------------
 
 ## Part 5: AuthN vs. AuthZ & Identity-Aware Proxy
 
-It is critical to separate these two concepts:
-* **Authentication (AuthN):** Proving *who* you are (e.g., logging in with a password).
+It is critical to separate these two concepts: 
+
+* **Authentication (AuthN):** Proving *who* you are (e.g., logging in with a password). 
 * **Authorization (AuthZ):** Proving *what you are allowed to do* (e.g., IAM checking if you have the Viewer role).
 
 ### Identity-Aware Proxy (IAP)
-In the past, to secure an internal company application, you would use a VPN (Virtual Private Network). 
 
-**Identity-Aware Proxy (IAP)** allows you to establish a central authorization layer without a VPN. It acts as a TLS proxy between the outside world and your internal service. When a user tries to visit your app, IAP intercepts them, forces them to Authenticate (AuthN) via Google, and then checks IAM to verify they are Authorized (AuthZ) to access the application.
+In the past, to secure an internal company application, you would use a VPN (Virtual Private Network).
+
+- **Identity-Aware Proxy (IAP)** allows you to establish a central authorization layer without a VPN. 
+- It acts as a TLS proxy between the outside world and your internal service. 
+- When a user tries to visit your app, IAP intercepts them, forces them to authenticate (AuthN) via Google, and then checks IAM to verify they are authorized (AuthZ) to access the application.
 
 ::: {.callout-important collapse="false"}
 ## IAP Limitations
-IAP only secures HTTP/HTTPS requests coming from the outside. It **does not** protect against:
-1.  Someone using SSH to directly access the VM.
-2.  Activities *within* the local network (e.g., VM-to-VM communication inside your project). 
+
+IAP only secures HTTP/HTTPS requests coming from the outside. It **does not** protect against: 
+
+1. Someone using SSH to directly access the VM. 
+2. Activities *within* the local network (e.g., VM-to-VM communication inside your project).
 :::
 
 ------------------------------------------------------------------------
 
-## Part 6: The Grand Finale Demo (Securing App Engine with IAP)
+## Part 6: Securing App Engine with IAP
 
-Let's take a live App Engine application and lock it down so only authorized users can see it. Notice that we will achieve total, mathematically secure user authentication **without changing a single line of our Python code.**
+Let's look at how to take a live App Engine application and lock it down so only authorized users can see it. Notice that we will achieve secure user authentication without altering our Python code. 
 
 ### Step 1: Configure the OAuth Consent Screen
+
 Before Google allows you to ask people to log in, you have to configure the screen that tells them what they are logging into.
 
-1.  Navigate to **APIs & Services -> OAuth consent screen**.
+1.  Navigate to **APIs & Services -\> OAuth consent screen**.
 2.  Choose **External** (unless you are using a strictly internal university Workspace account).
-3.  Fill out the required app name and support email. 
+3.  Fill out the required app name and support email.
 4.  Save and continue through the scopes (leave default).
 
 ### Step 2: Turn on Identity-Aware Proxy (IAP)
-1.  Navigate to **Security -> Identity-Aware Proxy**.
+
+1.  Navigate to **Security -\> Identity-Aware Proxy**.
 2.  You will see a list of your active compute resources, including your App Engine app.
-3.  Click the toggle switch next to your App Engine app to turn IAP **ON**. 
+3.  Click the toggle switch next to your App Engine app to turn IAP **ON**.
 
 At this exact moment, if you try to visit your App Engine URL, you will be hit with a Google Login screen. However, even if you log in, you will get an "Access Denied" error. Why? Because we proved *who* we are (AuthN), but we haven't given ourselves permission to enter (AuthZ)!
 
 ### Step 3: Granting Access (AuthZ)
+
 We need to tell the IAP proxy to put our specific email address on the authorized access list.
 
 ::: panel-tabset
 ## Mac / Linux / Cloud Shell
+
 ``` bash
 # Add your personal email to the IAP allowed list for this project
 gcloud projects add-iam-policy-binding [YOUR-PROJECT-ID] \
@@ -216,6 +277,7 @@ gcloud projects add-iam-policy-binding [YOUR-PROJECT-ID] \
 ```
 
 ## Windows (PowerShell)
+
 ``` powershell
 # Add your personal email to the IAP allowed list for this project
 gcloud projects add-iam-policy-binding [YOUR-PROJECT-ID] `
