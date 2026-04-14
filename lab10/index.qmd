@@ -159,7 +159,8 @@ Now that our infrastructure is back online, we need to update our Python applica
 
 - When we turn on **Identity-Aware Proxy (IAP)** in Part 3, IAP acts as a bouncer. 
 - If a user successfully logs in, IAP forwards their traffic to our App Engine code and secretly attaches a special HTTP header: ```X-Goog-Authenticated-User-Email```
-- We will use this email inside our Python code to tag who owns which rock, and filter the database!
+- It also attaches a cryptographically signed **JSON Web Token (JWT)** that proves the email header wasn't forged by a hacker.
+- We will use this data inside our Python code to tag who owns which rock, filter the database, and display the raw JWT token on the screen!
 :::
 
 ### 2.1 The Application Files
@@ -205,9 +206,14 @@ def get_current_user():
     email = request.headers.get('X-Goog-Authenticated-User-Email', '')
     return email.replace('accounts.google.com:', '') if email else 'Anonymous'
 
+def get_raw_jwt():
+    """Extracts the raw JSON Web Token (JWT) sent by Identity-Aware Proxy."""
+    return request.headers.get('X-Goog-Iap-Jwt-Assertion', 'No Token Found (IAP may be off)')
+
 @app.route('/')
 def index():
     current_user = get_current_user()
+    jwt_token = get_raw_jwt()
     
     # AuthZ: Query 1 - Get ONLY the community's public finds
     public_docs = db.collection("specimens").where(filter=FieldFilter("is_public", "==", True)).stream()
@@ -218,7 +224,10 @@ def index():
     private_specimens = [{"id": doc.id, **doc.to_dict()} for doc in private_docs]
     
     html = """
-    <h1>Rockhound Vault</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Rockhound Vault</h1>
+        <a href="/_gcp_iap/clear_login_cookie" style="padding: 8px 16px; background-color: #d93025; color: white; text-decoration: none; border-radius: 4px;">Log Out</a>
+    </div>
     <p>Logged in as: <strong>{{ user }}</strong></p>
     <hr>
     
@@ -254,8 +263,15 @@ def index():
         
         <button type="submit">Upload to Vault</button>
     </form>
+
+    <hr>
+    <div style="background-color: #f1f3f4; padding: 15px; border-radius: 5px; font-family: monospace; word-break: break-all; margin-top: 40px;">
+        <h4 style="margin-top: 0; color: #1a73e8;">Diagnostic: Raw IAP JWT Assertion</h4>
+        <p style="font-size: 0.8em; color: #555;">This is the cryptographically signed token Google passed to your Python code behind the scenes!</p>
+        {{ token }}
+    </div>
     """
-    return render_template_string(html, user=current_user, public_specimens=public_specimens, private_specimens=private_specimens)
+    return render_template_string(html, user=current_user, public_specimens=public_specimens, private_specimens=private_specimens, token=jwt_token)
 
 @app.route('/add', methods=['POST'])
 def add_specimen():
@@ -322,40 +338,28 @@ if __name__ == '__main__':
 
 ------------------------------------------------------------------------
 
-## Part 3: Deployment and the Security Moat (IAP)
+### 3.2 Establish the OAuth Consent Screen & Credentials
 
-### 3.1 Deploy the Application
+Before Google allows you to ask people to log in, you need to configure a consent screen and manually create an OAuth client ID. This two-step process gives IAP the credentials it needs to function.
 
-Deploy your updated code to App Engine.
-```bash
-gcloud app deploy --quiet
-```
-
-### 3.2 Establish the OAuth Consent Screen (UI Required)
-
-Before Google allows you to ask people to log in, you have to configure the screen that tells them what they are logging into. This step requires the graphical interface.
+**Step A: Configure the OAuth Consent Screen**
 
 1.  Use the top search bar in the Google Cloud Console to search for **OAuth consent screen** (under APIs & Services) and click it.
-2.  Choose **External** (or Internal if prompted by a university Workspace account) and click Create.
-3.  Fill out the required **App Name** and **Support Email** in the Branding/Overview section, and click Save. You can ignore the other advanced menus.
+2.  Choose **External** (or **Internal** if prompted by a university Workspace account) and click **Create**.
+3.  Fill out the required **App Name** and **Support Email** fields, then click **Save and Continue**.
+4.  On the **Scopes** page, click **Save and Continue** (no changes needed).
+5.  On the **Test Users** page, click **Save and Continue** (no changes needed).
+6.  On the **Summary** page, click **Back to Dashboard**.
 
-### 3.3 Enable IAP & Grant Access (CLI Method)
+**Step B: Manually Create the OAuth Client ID**
 
-Now we will use the command line to turn the proxy on and add our email addresses to the VIP list, bypassing the Cloud Console menus entirely!
+1.  In the left sidebar, navigate to **APIs & Services → Credentials**.
+2.  Click **+ Create Credentials** and choose **OAuth client ID**.
+3.  For Application type, select **Web application**.
+4.  Give it a name (e.g., `IAP-App-Engine`) and click **Create**.
+5.  A dialog will show your new Client ID and Secret — click **OK** to dismiss it.
 
-Open your Cloud Shell terminal and run the following commands:
-
-```bash
-# 1. Turn IAP ON for your App Engine environment
-gcloud iap web enable --resource-type=app-engine
-
-# 2. Add yourself to the VIP list (Replace with your actual email!)
-gcloud projects add-iam-policy-binding [YOUR-PROJECT-ID] \
-    --member="user:your.email@example.com" \
-    --role="roles/iap.httpsResourceAccessor"
-```
-*(Note: If you want to grant access to a classmate to test the Public/Private feature, just run the second command again with their email address!)*
-
+IAP will automatically detect and use this credential when you enable it in the next step.
 ------------------------------------------------------------------------
 
 ## Part 4: Testing & Teardown
@@ -363,11 +367,14 @@ gcloud projects add-iam-policy-binding [YOUR-PROJECT-ID] \
 ### 4.1 Test the Authorization Logic
 
 Visit your App Engine URL. 
+
 1.  You should be forced to log in with Google.
 2.  Your email should be displayed at the top of the dashboard.
-3.  Upload one **Private** specimen. Notice that it only appears under "My Private Vault".
-4.  Upload one **Public** specimen. Notice that it appears under the "Public Community Finds".
-5.  *(Optional)* If you granted access to a classmate, have them log in. They should see your Public find, but your Private find will be completely invisible to them!
+3.  Scroll to the bottom of the page to view the **Raw IAP JWT Assertion**. This is the literal cryptographically signed ID badge you learned about in the lecture!
+4.  Upload one **Private** specimen. Notice that it only appears under "My Private Vault".
+5.  Upload one **Public** specimen. Notice that it appears under the "Public Community Finds".
+6.  Click the red **Log Out** button at the top right.
+7.  *(Optional)* If you granted access to a classmate, have them log in. They should see your Public find, but your Private find will be completely invisible to them!
 
 ::: {.callout-note collapse="false"}
 ## Lab Submission Requirements
@@ -376,7 +383,7 @@ To receive full credit for Lab 10, submit a single PDF document containing:
 
 1.  **The Live URL:** Provide the direct link to your deployed `cloud-data-lab` App Engine service.
 2.  **The AuthN Screenshot:** A screenshot of the Google Login prompt before entering your app, proving IAP is active.
-3.  **The AuthZ Screenshot:** A screenshot of your dashboard showing at least one "Public" find and one "Private" find, with your email clearly visible at the top.
+3.  **The AuthZ Screenshot:** A screenshot of your dashboard showing at least one "Public" find, one "Private" find, and the raw JWT Diagnostic box at the bottom.
 :::
 
 ### 4.2 Infrastructure Teardown
