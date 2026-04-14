@@ -5,31 +5,28 @@ title: "Lecture 13: Identity, Access, and the Zero-Trust Cloud"
 ::: {.callout-note collapse="false"}
 ## readme.txt — Lecture Objectives
 
--   In the early days of IT, security was often treated like a "Castle and Moat." 
-- If you were inside the corporate office building or logged into the university VPN, the network tended to trust you.
--   The cloud does not work this way. The cloud operates on a **Zero-Trust** model. No human user, no piece of code, and no network request is trusted by default.
--   Today, we will explore the **shared responsibility** model, how Google Cloud manages identities across large organizations, why we use robotic service accounts, and how to place a secure login portal in front of an application.
--   Most importantly, we will answer a deeper question: where is authorization actually enforced, and how does a system prove its identity at each boundary?
+-   In early IT, security was a "Castle and Moat." Once inside the university VPN or corporate building, the network trusted you.
+-   The cloud operates on a **Zero-Trust** model: no human, code, or network request is trusted by default.
+-   Today, we will explore the **shared responsibility** model, how Google Cloud manages identities, why we use robotic service accounts, and how to place a secure login portal in front of an application.
+-   **The Core Question:** Where is authorization actually enforced, and how does a system prove its identity at each boundary?
 :::
 
 ------------------------------------------------------------------------
 
 ## Part 1: The Shared Responsibility Model
 
-When you deploy an application to an on-premises university server room, you are responsible for the security of the *entire* stack: the locks on the server room door, the encryption of the hard drives, the network firewalls, and the application code.
+In an on-premises server room, you secure everything: physical locks, hard drives, firewalls, and code. In the cloud, security becomes a **shared responsibility**.
 
-When you move to Google Cloud, security becomes a **shared responsibility**.
+-   **Google's Responsibility (Lower Layers):** Physical data center security, hardware integrity, network infrastructure, and default disk encryption.
+-   **Your Responsibility (Upper Layers):** Securing the data, controlling access, configuring firewalls, and writing secure application code.
 
--   **Google's Responsibility (The Lower Layers):** Google handles the physical security of the data centers, the integrity of the underlying hardware and network, and the default encryption of data on physical disks.
--   **Your Responsibility (The Upper Layers):** You are responsible for securing the data itself. You control who (or what) has access to your data, which services are exposed to the internet, and the security of your application code.
-
-Google provides the tools (such as IAM, firewall rules, and service identities), but *you* must configure them correctly.
+Google provides the tools (IAM, firewalls), but *you* must configure them correctly.
 
 ![The shared responsibility model for different categories. ](images/shared_responsibilities.svg){fig-align="center"}
 
 ::: {.callout-tip collapse="false"}
 ## The Core Security Questions
-In cloud computing, security is not just about "locking the front door." You must think about:
+In cloud computing, security is not just about "locking the front door." Always ask:
 
 1.  **Who** is making the request? (Identity)
 2.  **What** are they trying to do? (Role/Permission)
@@ -41,62 +38,44 @@ In cloud computing, security is not just about "locking the front door." You mus
 
 ## Part 2: Cloud Identity & The Resource Hierarchy
 
-To manage access to cloud resources, we first have to understand how Google Cloud organizes its assets and its users.
+To manage access, we first have to understand how Google Cloud organizes its assets and users.
 
-### 2.1 Cloud Identity (Managing the Humans)
+::: {.callout-note collapse="false"}
+## Cloud Identity vs. Personal Gmail
+Inviting personal `@gmail.com` accounts works for small projects, but is an organizational nightmare. **Cloud Identity** allows central management (e.g., tying into UMontana's Active Directory). If an employee leaves, IT disables their account once, instantly revoking all cloud access.
+:::
 
--   When you first start building, it is easy to just invite your teammates' `@gmail.com` accounts to your project. 
--   However, this becomes a nightmare for an organization. If an employee leaves, you would have to manually track down every project they had access to and remove that Gmail account.
--   **Cloud Identity** allows organizations to centrally manage users and groups (often tying into existing Active Directory or LDAP systems). 
--   If someone leaves the company, an administrator disables their Cloud Identity account once, and their access to all cloud resources is instantly revoked.
+### 2.1 The Resource Hierarchy
 
-### 2.2 The Resource Hierarchy
+Permissions cascade downward. If granted access at a high level, you inherit it for everything beneath it.
 
-Permissions in Google Cloud cascade downward through a strict hierarchy. If you are granted access at a high level, you inherit that access for everything beneath it.
-
-1.  **Organization:** The root node (for example, `umontana.edu`).\
-    *(Note: Personal Gmail users do not have an Organization node, which is why personal projects begin at the Project level.)*
-2.  **Folders:** Used to isolate departments or teams (for example, `Engineering` versus `HR`).
-3.  **Projects:** The core organizing entity where billing is calculated. Every resource must belong to a project.
-4.  **Resources:** The individual services and objects (for example, a Compute Engine VM, a Cloud Storage bucket, or a Secret Manager secret).
+1.  **Organization:** The root node (e.g., `umontana.edu`). *(Note: Personal Gmail projects skip this and start at the Project level.)*
+2.  **Folders:** Used to isolate departments (e.g., `Engineering` vs. `HR`).
+3.  **Projects:** The core organizing and billing entity. Every resource belongs to a project.
+4.  **Resources:** The individual services (e.g., a Compute Engine VM, a Storage bucket).
 
 ------------------------------------------------------------------------
 
-## Part 3: The Core of IAM (Identity and Access Management)
+## Part 3: The Core of IAM
 
-IAM is the system that answers one specific question: **Who can do what, on which resource?**
+IAM (Identity and Access Management) answers one specific question: **Who can do what, on which resource?**
 
-### 3.1 The "Who" (Identities)
-An **identity** can be a Google Account, a Google Group, a Cloud Identity domain, or a Service Account.
-
-### 3.2 The "What" (Roles)
-A **permission** is a single, highly specific action (e.g., `compute.instances.start`). Because there are thousands of permissions, Google groups them into **roles**.
+-   **Identities ("Who"):** A Google Account, Google Group, Cloud Identity domain, or Service Account.
+-   **Roles ("What"):** A collection of specific permissions (e.g., `compute.instances.start`).
 
 ::: {.callout-warning collapse="false"}
 ## Basic Roles (Avoid When Possible)
-Includes **Owner**, **Editor**, **Viewer**, and **Billing Administrator**. These roles are dangerously broad. An `Editor` on a project can modify almost anything inside that project, breaking the principle of least privilege.
+**Owner**, **Editor**, **Viewer**. These are dangerously broad. An `Editor` can modify almost anything in a project, breaking the principle of least privilege.
 :::
 
 ::: {.callout-tip collapse="false"}
 ## Predefined Roles (The Industry Standard)
-Specific services offer tailored sets of permissions (e.g., `roles/compute.instanceAdmin`). This allows a user to perform specific actions without granting sweeping project-wide access.
+Specific, tailored sets of permissions (e.g., `roles/compute.instanceAdmin`). This grants exactly what is needed to perform a job without sweeping project-wide access.
 :::
 
-::: {.callout-note collapse="false"}
-## Custom Roles (The Precise Failsafe)
-If predefined roles are still too broad, you can hand-pick exact permissions. This perfectly adheres to least privilege, but requires you to manually maintain the role as APIs change over time.
-:::
+### 3.1 Translating Theory to the Command Line
 
-### 3.3 Translating Theory to the Command Line
-
-Throughout this course, you have run commands to fix "Permission Denied" errors. Let's deconstruct what you were actually doing.
-
-#### Enabling APIs: The Prerequisite
-Before you can use a service, you often run: `gcloud services enable secretmanager.googleapis.com`
-This turns the service on, tracks billing, and creates hidden Google-managed **service agents** that the platform uses internally to operate the service securely.
-
-#### Deconstructing the Policy Binding Command
-When your App Engine code crashed trying to read a database password, you ran a policy binding command. Notice how it maps directly to **Where, Who, and What**:
+When you run policy binding commands to fix a "Permission Denied" error, you are literally writing IAM logic. Notice how this command maps to **Where, Who, and What**:
 
 ``` bash
 # 1. WHERE (The resource level - here, the specific secret)
@@ -109,61 +88,16 @@ gcloud secrets add-iam-policy-binding game-db-pass \
     --role="roles/secretmanager.secretAccessor"
 ```
 
-------------------------------------------------------------------------
+### 3.2 Interactive IAM Policy Evaluator
 
-## Part 4: Credentials and Trust Boundaries
-
-So far, we have talked about identities and permissions. But there is still a missing piece: **How does a system actually prove that it is who it claims to be?** The answer is: it presents a **credential**.
-
-
-
-::: {.callout-important collapse="false"}
-## Identity vs. Credential
-
--   An **Identity** is *who* is making the request (e.g., `alice@example.com`).
--   A **Credential** is the *mathematical proof* presented to support that claim (e.g., a password, a signed JWT token).
--   **Authentication (AuthN)** means validating that proof.
--   **Authorization (AuthZ)** means checking IAM to see what that identity is allowed to do.
-:::
-
-### 4.1 Different Boundaries Use Different Credentials
-
-A cloud request often crosses multiple trust boundaries. At each boundary, the credential changes.
-
-1. **Human User -> Google Login:** You prove your identity using a password and MFA. Google verifies this and issues a session token. The API sees your **human identity**.
-2. **`gcloud` CLI -> Cloud APIs:** The CLI acts on your behalf using stored OAuth access tokens. The API sees your **human identity**.
-3. **App Engine Code -> Cloud APIs:** Backend code authenticates using a **Service Account**. The API sees a **workload identity**, not the human who clicked the button on the website.
-
-### 4.2 The Mechanics of Cloud Credentials
-
-- Cloud platforms rely on **Short-Lived Signed Tokens**. 
-- Instead of giving a server a permanent password (which can be leaked), Google gives the server a temporary, cryptographically signed token that says, *"Google verifies this is App Engine, and this token expires in 60 minutes."* 
-- If a hacker steals the token, it becomes useless almost immediately.
-
-### Part 4.3: Interactive IAM Policy Evaluator
-
-Use the controls below to build an IAM policy. Select **Who** gets the access, **Where** in the hierarchy they get it, and **What** role they are granted. Watch how permissions cascade downward.
+Build an IAM policy below. Select **Who** gets access, **Where** it is granted, and **What** role is used to watch how permissions cascade.
 
 ```{ojs}
 //| echo: false
+viewof identity = Inputs.radio(["Alice (Human Developer)", "App-Engine-SA (Robot Identity)"], {label: "1. WHO (Identity):", value: "Alice (Human Developer)"})
+viewof resourceLevel = Inputs.select(["Engineering Folder (High Level)", "Project Alpha (Mid Level)", "Cloud Storage Bucket (Low Level)", "Compute Engine VM (Low Level)"], {label: "2. WHERE (Hierarchy Level):", value: "Engineering Folder (High Level)"})
+viewof role = Inputs.select(["None (Default)", "Storage Object Viewer (Predefined)", "Compute Instance Admin (Predefined)", "Project Editor (Basic / Broad)", "Explicit Deny All"], {label: "3. WHAT (Role):", value: "None (Default)"})
 
-// 1. Define the IAM Inputs (Who, Where, What)
-viewof identity = Inputs.radio(
-  ["Alice (Human Developer)", "App-Engine-SA (Robot Identity)"], 
-  {label: "1. WHO (Identity):", value: "Alice (Human Developer)"}
-)
-
-viewof resourceLevel = Inputs.select(
-  ["Engineering Folder (High Level)", "Project Alpha (Mid Level)", "Cloud Storage Bucket (Low Level)", "Compute Engine VM (Low Level)"], 
-  {label: "2. WHERE (Hierarchy Level):", value: "Engineering Folder (High Level)"}
-)
-
-viewof role = Inputs.select(
-  ["None (Default)", "Storage Object Viewer (Predefined)", "Compute Instance Admin (Predefined)", "Project Editor (Basic / Broad)", "Explicit Deny All"], 
-  {label: "3. WHAT (Role):", value: "None (Default)"}
-)
-
-// 2. The Logic Engine: Calculate inherited access for the Bucket
 bucketAccess = {
   if (role === "Explicit Deny All" && ["Engineering Folder (High Level)", "Project Alpha (Mid Level)", "Cloud Storage Bucket (Low Level)"].includes(resourceLevel)) return "Blocked (Explicit Deny)";
   if (role === "None (Default)") return "No Access (Implicit Deny)";
@@ -172,7 +106,6 @@ bucketAccess = {
   return "No Access (Role not applicable or applied elsewhere)";
 }
 
-// 3. The Logic Engine: Calculate inherited access for the VM
 vmAccess = {
   if (role === "Explicit Deny All" && ["Engineering Folder (High Level)", "Project Alpha (Mid Level)", "Compute Engine VM (Low Level)"].includes(resourceLevel)) return "Blocked (Explicit Deny)";
   if (role === "None (Default)") return "No Access (Implicit Deny)";
@@ -181,288 +114,206 @@ vmAccess = {
   return "No Access (Role not applicable or applied elsewhere)";
 }
 
-// Helper to color-code the output badges
 getColor = (access) => access.includes("Blocked") ? "#d32f2f" : access.includes("No Access") ? "#757575" : "#388e3c"
 
-// 4. The UI Output rendered via HTML
 html`
 <div style="border: 2px solid #1a73e8; border-radius: 8px; padding: 20px; background-color: #f8f9fa; font-family: sans-serif;">
   <h3 style="margin-top: 0; color: #1a73e8;">Effective Permissions Dashboard</h3>
-  <p><strong>Scenario:</strong> You assigned the <code>${role.split('(')[0].trim()}</code> role to <strong>${identity.split('(')[0].trim()}</strong> at the <strong>${resourceLevel.split('(')[0].trim()}</strong> level.</p>
-
-  <h4>Resulting Access on Downstream Resources:</h4>
   <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-
-    <div style="flex: 1; min-width: 200px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-      <h5 style="margin-top: 0; font-size: 1.1em;">🪣 Cloud Storage Bucket</h5>
-      <span style="color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9em; background-color: ${getColor(bucketAccess)}; display: inline-block;">
-        ${bucketAccess}
-      </span>
+    <div style="flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background: white;">
+      <h5 style="margin-top: 0;">🪣 Cloud Storage Bucket</h5>
+      <span style="color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600; background-color: ${getColor(bucketAccess)}; display: inline-block;">${bucketAccess}</span>
     </div>
-
-    <div style="flex: 1; min-width: 200px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-      <h5 style="margin-top: 0; font-size: 1.1em;">💻 Compute Engine VM</h5>
-      <span style="color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9em; background-color: ${getColor(vmAccess)}; display: inline-block;">
-        ${vmAccess}
-      </span>
+    <div style="flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background: white;">
+      <h5 style="margin-top: 0;">💻 Compute Engine VM</h5>
+      <span style="color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600; background-color: ${getColor(vmAccess)}; display: inline-block;">${vmAccess}</span>
     </div>
-
-  </div>
-
-  <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 0.9em; color: #555;">
-    <strong>💡 Key Takeaways:</strong>
-    <ul style="margin-bottom: 0; padding-left: 20px;">
-      <li>Roles applied to the <em>Folder</em> or <em>Project</em> cascade down to resources underneath them.</li>
-      <li>Predefined roles are narrower and safer than broad basic roles.</li>
-      <li>Basic roles like <em>Editor</em> often grant far more access than intended.</li>
-    </ul>
   </div>
 </div>
 `
 ```
 
+------------------------------------------------------------------------
+
+## Part 4: Credentials and Trust Boundaries
+
+**How does a system actually prove that it is who it claims to be?** It presents a credential.
+
+-   **Identity:** *Who* is making the request (e.g., `alice@example.com`).
+-   **Credential:** The *mathematical proof* presented (e.g., a password, a signed token).
+-   **Authentication (AuthN):** Validating the credential.
+-   **Authorization (AuthZ):** Checking IAM to see what that identity is allowed to do.
+
+### 4.1 HTTPS vs. JWTs (The Armored Truck and the ID Badge)
+
+Because both involve cryptography, it is easy to confuse network security with identity security.
+
+::: {.callout-note collapse="false"}
+## The Analogy
+* **HTTPS is the Armored Truck:** It creates an encrypted tunnel so hackers cannot read your data in transit. However, HTTPS has a blind spot: **it doesn't know who is inside the truck.**
+* **The Token (JWT) is the ID Badge:** It is the document *inside* the truck that proves who you are to the destination server. However, its blind spot is that the data is usually readable.
+
+**You need both.** A VIP badge is useless if you wave it around in a dangerous public street (Token without HTTPS), and a secure armored truck won't get you into a private club if you don't have ID (HTTPS without Token).
+:::
+
+### 4.2 JSON Web Tokens (JWTs)
+
+The standard cloud credential is a short-lived **JSON Web Token (JWT)** (`xxxxx.yyyyy.zzzzz`). 
+
+1.  **Header (`xxxxx`):** Declares the token type and signing algorithm.
+2.  **Payload (`yyyyy`):** The data (e.g., User ID, expiration timestamp). **This is Base64 encoded, not encrypted!** Never put sensitive secrets here.
+3.  **Signature (`zzzzz`):** A cryptographic seal created using a **Secret Key** known only to the server.
+
+::: {.callout-tip collapse="false"}
+## Catching Hackers with Math
+If a hacker alters the readable payload, they cannot forge a new signature without the server's Secret Key. When the server receives the token, it recalculates the signature using its private key and the tampered payload. The math will not match, and the request is instantly rejected.
+:::
+
+### 4.3 Interactive JWT Signature Simulator
+
+See how the Server's Secret Key prevents bad actors from elevating their permissions. Try simulating a Hacker Attack!
+
+```{ojs}
+//| echo: false
+viewof originalRole = Inputs.radio(["user", "viewer"], {label: "1. Server Issues Token with Role:", value: "user"})
+viewof secretKey = Inputs.text({label: "2. Server's Secret Key (Never Shared):", value: "my-secret-key"})
+viewof tamperToggle = Inputs.toggle({label: "3. Hacker Attack: Change Payload Role to 'admin'?"})
+
+b64Header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+b64PayloadOriginal = originalRole === "user" ? "eyJzdWIiOiIxMjMiLCJyb2xlIjoidXNlciJ9" : "eyJzdWIiOiIxMjMiLCJyb2xlIjoidmlld2VyIn0"
+b64PayloadTampered = "eyJzdWIiOiIxMjMiLCJyb2xlIjoiYWRtaW4ifQ"
+presentedPayload = tamperToggle ? b64PayloadTampered : b64PayloadOriginal
+
+generateMockHash = (roleStr, secretStr) => {
+  if (!secretStr) return "INVALID_MISSING_SECRET";
+  let combined = roleStr + secretStr;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) { hash = (hash << 5) - hash + combined.charCodeAt(i); hash |= 0; }
+  return Math.abs(hash).toString(16) + "a9f";
+}
+
+originalSignature = generateMockHash(originalRole, secretKey)
+presentedSignature = originalSignature
+serverDetectedRole = tamperToggle ? "admin" : originalRole;
+calculatedSignature = generateMockHash(serverDetectedRole, secretKey)
+
+isValid = (presentedSignature === calculatedSignature) && secretKey.length > 0;
+statusColor = isValid ? "#188038" : "#d93025"
+statusText = isValid ? "✅ VALID: Signatures Match. Access Granted." : "❌ INVALID: Signature Mismatch. Tampering Detected!"
+
+html`
+<div style="border: 2px solid ${statusColor}; border-radius: 8px; padding: 20px; background-color: white; font-family: sans-serif;">
+  <h3 style="margin-top: 0; color: ${statusColor};">JWT Verification Engine</h3>
+  <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+    <div style="flex: 1; padding: 15px; border: 1px dashed #ccc; border-radius: 5px;">
+      <strong>Attached Signature:</strong><br><small style="color: #555;">What the client sent</small><br>
+      <span style="font-family: monospace; color: #188038; font-size: 1.1em;">= ${presentedSignature}</span>
+    </div>
+    <div style="flex: 1; padding: 15px; border: 1px dashed #ccc; border-radius: 5px;">
+      <strong>Server Math (Recalculating):</strong><br><small style="color: #555;">Hash( Payload + Secret Key )</small><br>
+      <span style="font-family: monospace; color: ${isValid ? '#188038' : '#d93025'}; font-size: 1.1em;">= ${calculatedSignature}</span>
+    </div>
+  </div>
+  <div style="margin-top: 15px; padding: 12px; background: ${statusColor}; color: white; font-weight: bold; text-align: center; border-radius: 5px;">
+    ${statusText}
+  </div>
+</div>
+`
+```
 
 ------------------------------------------------------------------------
 
 ## Part 5: Service Accounts Deep Dive
 
-We know that **Service Accounts** are "ID badges for robots." But how does the robot actually get the badge?
+**Service Accounts** are "ID badges for robots." 
 
-### 5.1 The Magic of Application Default Credentials (ADC)
+::: {.callout-note collapse="false"}
+## Application Default Credentials (ADC)
+When your Python code connects to Firestore, it doesn't need a hardcoded password. Google Cloud injects short-lived tokens automatically through the environment via ADC. Your code uses this token to prove it is the `App Engine Default Service Account`.
+:::
 
-When you write Python code to read from Firestore, you don't hardcode a password into your `main.py` file. Instead, you just write `db = firestore.Client()`. 
+**A Service Account is both an Identity AND a Resource.**
 
-How does it connect securely without a password? 
-Google Cloud injects the credentials seamlessly through the environment. When App Engine starts your code, a hidden Google Metadata Server hands your code a short-lived token automatically. Your code uses that token to prove it is the `App Engine Default Service Account`. 
-
-
-
-### 5.2 The Double Life of a Service Account
-
-This is the most subtle concept in GCP: **A Service Account is both an Identity AND a Resource.**
-
-* **As an Identity (Wearing the badge):** You can grant the Service Account a role. (e.g., *"The App Engine SA is allowed to read the bucket"*).
-* **As a Resource (Controlling the badge):** Because it is an object in your project, it has its *own* IAM policy. You can grant a human permission to use the badge. (e.g., *"Alice is allowed to impersonate the App Engine SA"*).
+- **As an Identity:** You grant it a role (e.g., *"The Robot can read the bucket"*).
+- **As a Resource:** It has its own IAM policy. You grant a human permission to *use* it (e.g., *"Alice can impersonate the Robot"*).
 
 ::: {.callout-warning collapse="false"}
-## Best Practice: Avoid Key Files!
-Whenever possible, attach a Service Account directly to your Cloud Run or App Engine workload and let ADC handle the tokens automatically. Avoid downloading long-lived JSON key files to your laptop unless absolutely necessary; if that file is accidentally uploaded to GitHub, hackers can use it forever.
+## Avoid Key Files!
+Whenever possible, attach a Service Account directly to your workload and let ADC handle the tokens. Avoid downloading long-lived JSON key files; if uploaded to GitHub, hackers can use them forever.
 :::
 
 ------------------------------------------------------------------------
 
 ## Part 6: Where Authorization Is Actually Enforced
 
-This is the part students often find confusing, because **authorization is not enforced in the same place for every app architecture**.
+Authorization is not enforced in the same place for every app. Always ask: **"What kind of app are we building, and where does the access decision actually live?"**
 
-There are three common enforcement points:
+### Server-Side Application (App Engine + Python)
 
-1.  **At the application boundary** (e.g., Identity-Aware Proxy checks if a user can open an app).
-2.  **Inside the application code** (e.g., Flask code checks if the logged-in user owns a specific document).
-3.  **At the data layer** (e.g., Firestore Security Rules check if a mobile app can read a document).
+- The browser talks to your backend, and your backend talks to Google Cloud. 
+- **Backend code** handles application-level authorization.
+- **IAM** governs what the backend's Service Account can access.
 
-### 6.1 Server-Side Application (App Engine)
+### Client-Side Application (Firebase Web SDK)
 
-- In a server-side app, the browser doesn't talk directly to the database. 
-- The browser talks to your Python backend, and your backend talks to Google Cloud. 
-- Therefore, the backend code is responsible for application-level authorization, and **IAM** governs what the backend's Service Account can do.
-
-### 6.2 Client-Side Application (Firebase Web SDK)
-
-- If you build a browser-based app where the JavaScript talks directly to Firestore, there is no backend server.
-- Therefore, the database itself must decide if the user is allowed to read the data using **Firestore Security Rules**.
-- This is the exact same as in our early Firebase example. 
-
-::: {.callout-note collapse="false"}
-## The Golden Rule of Architecture
-Always ask: **"What kind of app are we building, and where does the access decision actually live?"**
-:::
-
-------------------------------------------------------------------------
+- The browser talks directly to the database without a backend server.
+- **Firestore Security Rules** evaluate the user's token directly at the data layer.
 
 ------------------------------------------------------------------------
 
 ## Part 7: Identity-Aware Proxy (IAP)
 
-In the past, to secure an internal company application, teams often used a VPN. **Identity-Aware Proxy (IAP)** provides a modern, Zero-Trust alternative.
-
--   It sits directly in front of your App Engine or Cloud Run service.
--   It intercepts incoming HTTP(S) traffic and forces the user to authenticate with Google.
--   It checks IAM to decide whether that specific user is on the VIP list allowed to reach the app.
+**Identity-Aware Proxy (IAP)** provides a modern, Zero-Trust alternative to a VPN. It sits directly in front of your App Engine service, intercepts incoming traffic, forces Google authentication, and checks IAM to ensure the user is on the VIP list.
 
 ::: {.callout-important collapse="false"}
-## IAP Is a Front Door, Not the Entire Building
-IAP is an **application-boundary access control layer**. It is excellent for keeping unauthorized humans off your webpage. But once an authorized user gets past that gate, your backend code must still decide: *Which database records should this specific user be allowed to see?*
+## The Front Door
+IAP is an **application-boundary access control layer**. It keeps unauthorized humans out. However, once an authorized user gets past IAP, your backend code must still decide: *Which specific database records should this user be allowed to see?*
 :::
 
 ------------------------------------------------------------------------
 
 ## Part 8: Interactive Credential Flow Explorer
 
-Use the controls below to explore how identity changes across trust boundaries. For each architecture, notice what credential is presented, who validates it, and where authorization is actually enforced.
+Explore how identity changes across trust boundaries. Notice what credential is presented, who validates it, and where authorization is actually enforced.
 
 ```{ojs}
 //| echo: false
-
 flows = ({
   "Server-side App (IAP + App Engine + Firestore)": {
-    summary: {
-      title: "Server-side pattern",
-      takeaway: "The app learns the human user's identity, but Firestore usually sees the App Engine service account. This is why backend code often enforces per-user authorization."
-    },
     stages: [
-      {
-        label: "1. Human User -> Google Login",
-        credential: "Password / MFA / existing Google session",
-        verifier: "Google Identity",
-        resultingIdentity: "alice@example.com (human identity)",
-        authz: "None yet — this is mainly authentication"
-      },
-      {
-        label: "2. Google / IAP -> App Engine App",
-        credential: "IAP session + signed identity assertion",
-        verifier: "IAP checks login and IAM access",
-        resultingIdentity: "App learns the visiting user is alice@example.com",
-        authz: "IAP decides whether Alice may reach the app at all"
-      },
-      {
-        label: "3. App Engine App -> Firestore / Cloud Storage",
-        credential: "Application Default Credentials using the attached service account",
-        verifier: "Google Cloud API",
-        resultingIdentity: "my-app@appspot.gserviceaccount.com (workload identity)",
-        authz: "IAM decides what the service account may do"
-      }
+      { label: "1. Human User -> Google Login", credential: "MFA / Session", verifier: "Google Identity", identity: "alice@example.com (human)", authz: "Authentication only" },
+      { label: "2. Google / IAP -> App Engine", credential: "IAP signed assertion", verifier: "IAP", identity: "App learns user is Alice", authz: "IAP decides if Alice can reach the app" },
+      { label: "3. App Engine -> Firestore", credential: "ADC / Service Account Token", verifier: "Google Cloud API", identity: "my-app@appspot.gserviceaccount.com (workload)", authz: "IAM evaluates the service account" }
     ],
-    footer: {
-      dbSees: "Firestore sees the service account, not Alice directly.",
-      primaryAuthz: "Application code + IAM"
-    }
+    footer: "Firestore sees the service account, not Alice directly. Authorization lives in App Code + IAM."
   },
-
-  "Client-side App (Firebase Auth + Firestore Rules)": {
-    summary: {
-      title: "Client-side pattern",
-      takeaway: "Because the browser talks directly to Firestore, the database can evaluate the end user's identity in Security Rules."
-    },
+  "Client-side App (Firebase Auth + Firestore)": {
     stages: [
-      {
-        label: "1. Human User -> Firebase / Google Sign-In",
-        credential: "Password / MFA / OAuth login",
-        verifier: "Identity provider",
-        resultingIdentity: "alice@example.com (human identity)",
-        authz: "None yet — mainly authentication"
-      },
-      {
-        label: "2. Browser App -> Firestore",
-        credential: "User ID token",
-        verifier: "Firestore validates the token",
-        resultingIdentity: "Firestore sees Alice as the end user",
-        authz: "Firestore Security Rules evaluate request.auth"
-      }
+      { label: "1. Human User -> Firebase Auth", credential: "OAuth / Password", verifier: "Identity Provider", identity: "alice@example.com (human)", authz: "Authentication only" },
+      { label: "2. Browser -> Firestore", credential: "User JWT", verifier: "Firestore", identity: "Firestore sees Alice directly", authz: "Firestore Security Rules evaluate request.auth" }
     ],
-    footer: {
-      dbSees: "Firestore sees Alice directly.",
-      primaryAuthz: "Firestore Security Rules"
-    }
-  },
-
-  "gcloud CLI -> Google Cloud API": {
-    summary: {
-      title: "CLI pattern",
-      takeaway: "When you use gcloud after logging in, the API usually sees your human identity unless you explicitly impersonate a service account."
-    },
-    stages: [
-      {
-        label: "1. Human User -> gcloud login",
-        credential: "Browser login / OAuth consent",
-        verifier: "Google Identity",
-        resultingIdentity: "alice@example.com (human identity)",
-        authz: "None yet — authentication first"
-      },
-      {
-        label: "2. gcloud -> Google Cloud API",
-        credential: "OAuth access token",
-        verifier: "Google Cloud API",
-        resultingIdentity: "API sees Alice's user identity",
-        authz: "IAM checks Alice's roles on the target resource"
-      }
-    ],
-    footer: {
-      dbSees: "The API sees the logged-in human identity.",
-      primaryAuthz: "IAM"
-    }
+    footer: "Firestore sees Alice directly. Authorization lives in Security Rules."
   }
 })
 
-viewof selectedFlow = Inputs.select(
-  Object.keys(flows),
-  {
-    label: "Choose an architecture:",
-    value: "Server-side App (IAP + App Engine + Firestore)"
-  }
-)
-
+viewof selectedFlow = Inputs.select(Object.keys(flows), {label: "Choose Architecture:"})
 currentFlow = flows[selectedFlow]
-
-cardColor = (i) => ["#1a73e8", "#188038", "#d93025", "#f9ab00"][i % 4]
 
 html`
 <div style="border: 2px solid #1a73e8; border-radius: 10px; padding: 20px; background: #f8f9fa; font-family: sans-serif;">
-  <h3 style="margin-top: 0; color: #1a73e8;">${currentFlow.summary.title}</h3>
-  <p style="margin-top: 0; font-size: 1rem; color: #333;">
-    <strong>Big idea:</strong> ${currentFlow.summary.takeaway}
-  </p>
-
-  <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px;">
+  <div style="display: flex; flex-wrap: wrap; gap: 16px;">
     ${currentFlow.stages.map((stage, i) => html`
-      <div style="
-        flex: 1 1 260px;
-        min-width: 260px;
-        background: white;
-        border: 2px solid ${cardColor(i)};
-        border-radius: 10px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        overflow: hidden;
-      ">
-        <div style="background: ${cardColor(i)}; color: white; padding: 10px 14px; font-weight: 700;">
-          ${stage.label}
-        </div>
-        <div style="padding: 14px;">
-          <p><strong>Credential presented:</strong><br>${stage.credential}</p>
-          <p><strong>Who validates it:</strong><br>${stage.verifier}</p>
-          <p><strong>Identity seen after this step:</strong><br>${stage.resultingIdentity}</p>
-          <p style="margin-bottom: 0;"><strong>Authorization here:</strong><br>${stage.authz}</p>
+      <div style="flex: 1; min-width: 200px; background: white; border: 2px solid #1a73e8; border-radius: 8px;">
+        <div style="background: #1a73e8; color: white; padding: 8px 12px; font-weight: bold;">${stage.label}</div>
+        <div style="padding: 12px; font-size: 0.9em;">
+          <strong>Credential:</strong> ${stage.credential}<br>
+          <strong>Identity:</strong> ${stage.identity}<br>
+          <strong>AuthZ:</strong> ${stage.authz}
         </div>
       </div>
     `)}
   </div>
-
-  <div style="
-    margin-top: 20px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 14px;
-  ">
-    <div style="background: white; border-left: 6px solid #1a73e8; padding: 14px; border-radius: 8px;">
-      <strong>What the data layer sees</strong>
-      <div style="margin-top: 6px;">${currentFlow.footer.dbSees}</div>
-    </div>
-    <div style="background: white; border-left: 6px solid #188038; padding: 14px; border-radius: 8px;">
-      <strong>Main authorization mechanism</strong>
-      <div style="margin-top: 6px;">${currentFlow.footer.primaryAuthz}</div>
-    </div>
-  </div>
-
-  <div style="
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px solid #ddd;
-    color: #555;
-    font-size: 0.95rem;
-  ">
-    <strong>Teaching prompt:</strong>
-    Ask yourself, "At this boundary, which identity does the next service actually trust?"
-  </div>
+  <div style="margin-top: 15px; padding: 12px; background: #e8f0fe; border-left: 5px solid #1a73e8;"><strong>Key Takeaway:</strong> ${currentFlow.footer}</div>
 </div>
 `
 ```
@@ -471,15 +322,14 @@ html`
 
 ## Part 9: Looking Ahead
 
-We are now ready for a more nuanced view of cloud security:
+We are now ready for a nuanced view of cloud security:
 
--   **IAM** controls access between identities and Google Cloud resources.
--   **Credentials** prove identity mathematically at different trust boundaries.
--   **Service Accounts** give backend code a secure, passwordless identity.
--   **IAP** protects the front door of your application.
+-   **IAM** controls access between identities and resources.
+-   **Credentials** (like JWTs) prove identity mathematically.
+-   **Service Accounts** give backend code a passwordless identity.
+-   **IAP** protects the front door.
 
 ::: {.callout-note collapse="false"}
 ## Preview of the Next Lab
-In the next lab, we will combine these exact ideas to build a multi-user application. 
-IAP will act as the bouncer at the front door, our Python backend will decide which rock specimens a user can view, and our App Engine Service Account will securely ferry data to Firestore!
+We will combine these concepts to build a multi-user application. IAP will act as the bouncer, our Python backend will enforce data visibility, and our Service Account will securely ferry data to Firestore!
 :::
