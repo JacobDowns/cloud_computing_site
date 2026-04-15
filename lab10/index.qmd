@@ -338,28 +338,57 @@ if __name__ == '__main__':
 
 ------------------------------------------------------------------------
 
-### 3.2 Establish the OAuth Consent Screen & Credentials
+## Part 3: Deployment and the Security Moat (IAP)
 
-Before Google allows you to ask people to log in, you need to configure a consent screen and manually create an OAuth client ID. This two-step process gives IAP the credentials it needs to function.
+### 3.1 Deploy the Application
 
-**Step A: Configure the OAuth Consent Screen**
+Deploy your updated code to App Engine.
+```bash
+gcloud app deploy
+```
 
-1.  Use the top search bar in the Google Cloud Console to search for **OAuth consent screen** (under APIs & Services) and click it.
-2.  Choose **External** (or **Internal** if prompted by a university Workspace account) and click **Create**.
-3.  Fill out the required **App Name** and **Support Email** fields, then click **Save and Continue**.
-4.  On the **Scopes** page, click **Save and Continue** (no changes needed).
-5.  On the **Test Users** page, click **Save and Continue** (no changes needed).
-6.  On the **Summary** page, click **Back to Dashboard**.
+### 3.2 Establish & Publish the OAuth Consent Screen 
 
-**Step B: Manually Create the OAuth Client ID**
+Before Google allows you to ask people to log in, you have to configure the screen that tells them what they are logging into. 
 
-1.  In the left sidebar, navigate to **APIs & Services → Credentials**.
-2.  Click **+ Create Credentials** and choose **OAuth client ID**.
-3.  For Application type, select **Web application**.
-4.  Give it a name (e.g., `IAP-App-Engine`) and click **Create**.
-5.  A dialog will show your new Client ID and Secret — click **OK** to dismiss it.
+1.  Use the top search bar in the Google Cloud Console to search for **OAuth consent screen** (under APIs & Services) and click it. *(Note: Google is currently renaming this entire section to the **Google Auth platform**).*
+2.  Navigate through the setup tabs on the left side of the screen:
+    * **Branding:** Fill out the required **App Name** and **User Support Email**, then click Save.
+    * **Data Access:** You do not need any special scopes for this lab. Just click Save.
+    * **Audience:** Select **External** (or Internal if prompted by a university Workspace account) as your User Type.
 
-IAP will automatically detect and use this credential when you enable it in the next step.
+::: {.callout-important collapse="false"}
+### CRITICAL.SYS
+
+1. By default, Google puts your app in "Testing" mode, which actively blocks logins. While you are still on the **Audience** tab, look for the section labeled "Publishing status". 
+2.  Click the **Publish App** button and confirm the prompt. This allows any standard Google account to log into your app!
+:::
+
+
+### 3.3 Enable IAP & Auto-Generate Credentials
+Now we will turn on Identity-Aware Proxy and let Google safely generate the cryptographic keys (the "ID Badge") needed for the proxy to function.
+
+1.  Navigate to **Security -> Identity-Aware Proxy**.
+2.  Locate the row for your **App Engine app**. Click the **three vertical dots** (More actions) on the far right side of that row.
+3.  Select **Settings**. This will open a configuration side panel on the right.
+4.  At the top of the panel, select the radio button for **Custom OAuth client**.
+5.  Click the **Auto generate credentials** button that appears. Google will instantly create the keys and configure the return addresses in the background!
+6.  Click **Save** at the bottom of the panel.
+7.  Finally, toggle the main switch next to your App Engine app to **ON** and click **Turn On**.
+
+
+### 3.4 Allow Any Google Account to Authenticate
+
+Instead of manually adding every single student's email to a VIP list, we are going to tell IAP to allow *anyone* with a valid Google Account through the front door. We will let our Python code handle the Authorization.
+
+1.  Check the box next to your App Engine app to open the side panel on the right.
+2.  Click **Add Principal**.
+3.  In the "New principals" box, type exactly this: `allAuthenticatedUsers`
+4.  Assign the role: **Cloud IAP -> IAP-secured Web App User**.
+5.  Click **Save**.
+
+> *Wait around 2-3 minutes for the global proxy to update before testing your app in the next step!***
+
 ------------------------------------------------------------------------
 
 ## Part 4: Testing & Teardown
@@ -374,7 +403,8 @@ Visit your App Engine URL.
 4.  Upload one **Private** specimen. Notice that it only appears under "My Private Vault".
 5.  Upload one **Public** specimen. Notice that it appears under the "Public Community Finds".
 6.  Click the red **Log Out** button at the top right.
-7.  *(Optional)* If you granted access to a classmate, have them log in. They should see your Public find, but your Private find will be completely invisible to them!
+7.  Log back in using a *different* Google Account (or ask me or a classmate test your URL). 
+8.  Notice that the new user can log in and see your Public find, but your Private find is completely invisible to them!
 
 ::: {.callout-note collapse="false"}
 ## Lab Submission Requirements
