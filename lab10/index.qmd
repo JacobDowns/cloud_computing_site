@@ -409,9 +409,8 @@ Visit your App Engine URL.
 ::: {.callout-note collapse="false"}
 ## Lab Submission Requirements
 
-To receive full credit for Lab 10, submit a single PDF document containing:
+To receive full credit for Lab 10, submit the two following screenshots to Canvas:
 
-1.  **The Live URL:** Provide the direct link to your deployed `cloud-data-lab` App Engine service.
 2.  **The AuthN Screenshot:** A screenshot of the Google Login prompt before entering your app, proving IAP is active.
 3.  **The AuthZ Screenshot:** A screenshot of your dashboard showing at least one "Public" find, one "Private" find, and the raw JWT Diagnostic box at the bottom.
 :::
