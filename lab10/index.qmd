@@ -411,8 +411,8 @@ Visit your App Engine URL.
 
 To receive full credit for Lab 10, submit the two following screenshots to Canvas:
 
-2.  **The AuthN Screenshot:** A screenshot of the Google Login prompt before entering your app, proving IAP is active.
-3.  **The AuthZ Screenshot:** A screenshot of your dashboard showing at least one "Public" find, one "Private" find, and the raw JWT Diagnostic box at the bottom.
+1.  **The AuthN Screenshot:** A screenshot of the Google Login prompt before entering your app, proving IAP is active.
+2.  **The AuthZ Screenshot:** A screenshot of your dashboard showing at least one "Public" find, one "Private" find, and the raw JWT Diagnostic box at the bottom.
 :::
 
 ### 4.2 Infrastructure Teardown
