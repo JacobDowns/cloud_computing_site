@@ -1,0 +1,178 @@
+---
+title: "Lecture 14: Day 2 Operations — Automation, State, and Event-Driven Cloud"
+---
+
+::: {.callout-note collapse="false"}
+## readme.txt — Lecture Objectives
+
+-  Today we'll cover a handful of important topics that we've mentioned in passing, but have largely overlooked so far. 
+-   Today, we will explore:
+    - **Advanced Terraform**: how teams collaborate without destroying each other's work
+    - **Event-Driven Architectures**: how systems talk to each other asynchronously  
+    - **CI/CD pipelines**: how to automate code deployment
+:::
+
+------------------------------------------------------------------------
+
+## Part 1: Terraform in Practice (State and Scale)
+
+- In our last lab, you ran `terraform apply` from your Cloud Shell.
+- You can probably already see the benefits of using Terraform. 
+- However, imagine using Terraform in a team of five engineers.
+- You will immediately encounter the **State File Problem**.
+
+### 1.1 The Danger of Local State
+
+When Terraform builds your infrastructure, it generates a file called `terraform.tfstate`. This is Terraform's receipt. It maps the HCL code you wrote to the actual hidden IDs of the resources in Google Cloud.
+
+If Alice runs `terraform apply` on her laptop, she generates a local state file. If Bob runs `terraform apply` on his laptop at the exact same time, he generates a *different* local state file. Terraform becomes completely confused, the cloud environment gets corrupted, and resources are accidentally deleted or duplicated.
+
+### 1.2 The Solution: Remote State and Locking
+
+
+
+Production teams never store state files on their laptops. Instead, they configure a **Remote Backend**. In GCP, this is usually a highly secure Cloud Storage bucket.
+
+To do this, you add a `backend` block to your Terraform code:
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket  = "my-team-terraform-state-bucket"
+    prefix  = "rockhound-vault/state"
+  }
+}
+```
+
+-   **Centralized Source of Truth:** Everyone reads from the exact same receipt.
+-   **State Locking:** When Alice types `terraform apply`, Terraform checks the bucket and "locks" the state file. If Bob tries to deploy simultaneously, his terminal will reject the command, saying: *"State is currently locked by Alice."*
+
+### 1.3 When and Why to Use Terraform
+
+Terraform is the industry standard for **Infrastructure as Code (IaC)**, but it is not a silver bullet. 
+
+**The Benefits:**
+* **Disaster Recovery:** If a region goes down, you can spin up an identical replica of your architecture in a new region in minutes.
+* **Auditability:** Every change to the infrastructure is tracked in Git. You know exactly who opened a firewall port and when.
+* **Environment Parity:** You can use the exact same code to build a `staging` environment and a `production` environment, guaranteeing they are identical.
+
+**The Limitations:**
+* **Infrastructure Drift:** If someone logs into the Cloud Console UI and manually changes a database password, Terraform's state file becomes out of sync with reality. (Terraform will actually aggressively overwrite manual changes the next time it runs to force the cloud to match the code!)
+* **Importing Existing Resources:** Writing Terraform code for a brand new project is easy. Importing an old, messy infrastructure that was built by hand over five years into Terraform is incredibly painful.
+
+------------------------------------------------------------------------
+
+## Part 2: Event-Driven Architecture (The Asynchronous Cloud)
+
+Our current application uses a **Synchronous** architecture. If a user uploads a massive 50MB high-resolution photo of a fossil, the Python backend receives the image, saves it to Cloud Storage, and waits. The user's browser spins and spins until the server is done. 
+
+If 1,000 users do this at the exact same second, a synchronous server will completely crash.
+
+### 2.1 The Post Office (Pub/Sub)
+
+
+
+To build systems that scale infinitely, we use **Asynchronous Messaging**. **Google Cloud Pub/Sub** acts like a massive, highly durable post office.
+
+1.  **The Publisher:** Your web app quickly drops the massive image into Cloud Storage, sends a quick message to a Pub/Sub **Topic** ("Hey, image 123 was uploaded!"), and immediately tells the user "Upload Successful!" The web app is now free to handle the next user.
+2.  **The Topic:** Pub/Sub holds onto that message safely.
+3.  **The Subscriber:** A separate, background worker (like Cloud Run) checks the Pub/Sub topic. It sees the message, downloads the heavy image, compresses it into a thumbnail, and updates the database at its own pace.
+
+### 2.2 Pub/Sub in Practice
+
+How do you actually use this? First, you create the post office infrastructure (the Topic and the Subscription) using the CLI or Terraform:
+
+```bash
+# 1. Create the Topic (The mailbox)
+gcloud pubsub topics create new-specimen-uploads
+
+# 2. Create a Subscription (The mail route to your background worker)
+gcloud pubsub subscriptions create thumbnail-worker-sub --topic=new-specimen-uploads
+```
+
+Then, in your web app's `main.py` code, you publish a message the moment a user uploads a file:
+
+```python
+from google.cloud import pubsub_v1
+import json
+
+publisher = pubsub_v1.PublisherClient()
+topic_path = publisher.topic_path("your-project-id", "new-specimen-uploads")
+
+# The data you want to send to the background worker
+message_data = {"specimen_id": "8f72a", "image_name": "fossil.jpg"}
+
+# Messages must be encoded as byte strings
+data_bytes = json.dumps(message_data).encode("utf-8")
+
+# Publish the message!
+future = publisher.publish(topic_path, data=data_bytes)
+print(f"Published message ID: {future.result()}")
+```
+
+------------------------------------------------------------------------
+
+## Part 3: Continuous Integration & Deployment (CI/CD)
+
+The final rule of Day 2 Operations: **Humans should not deploy code.**
+
+Running `gcloud app deploy` from a laptop is dangerous. A developer might deploy from the wrong git branch, they might deploy code with syntax errors, or their laptop might lose Wi-Fi halfway through.
+
+### 3.1 Hooking Up GitHub to Google Cloud
+
+
+
+We solve this using a **CI/CD Pipeline**. Instead of deploying directly to Google Cloud, developers push their code to **GitHub**. When a developer merges code into the `main` branch, a server at GitHub automatically runs a deployment script.
+
+But how does GitHub get permission to touch your Google Cloud project? 
+
+**The Old Way (Bad):** Developers would download a long-lived Service Account JSON key and paste it into GitHub. If a hacker breached GitHub, they stole the key and gained God-level access to the GCP project forever.
+
+**The Modern Way (Workload Identity Federation):**
+Instead of passwords, we use cryptographic trust. 
+
+1.  **The Setup:** You configure Google Cloud to implicitly trust your specific GitHub repository URL.
+2.  **The Handshake:** GitHub Actions starts running. It tells Google: *"I am the repository `umontana-cs/rockhound-vault`. Here is a mathematically signed token proving who I am."*
+3.  **The Exchange:** Google verifies the token, checks its rules, and replies: *"I recognize you. Here is a short-lived Google Access Token valid for exactly 15 minutes."*
+4.  **The Deployment:** GitHub uses that temporary token to deploy the code. The token then vanishes. 
+
+### 3.2 The CI/CD Pipeline Code
+
+In practice, you define this pipeline by placing a `.yml` file inside a `.github/workflows/` folder in your repository. Here is exactly what the industry-standard deployment script looks like:
+
+```yaml
+name: Deploy to App Engine
+on:
+  push:
+    branches:
+      - main # Only run this script when code is pushed to the main branch!
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # Required to securely request the Workload Identity token
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. The Workload Identity Handshake! No JSON keys used.
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/123/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
+          service_account: 'github-deployer@my-project.iam.gserviceaccount.com'
+
+      # 2. Deploy the application to App Engine
+      - name: Deploy to App Engine
+        uses: google-github-actions/deploy-appengine@v2
+        with:
+          project_id: 'my-project'
+```
+
+With this in place, the cloud practically runs itself. You write code, you `git push`, and the robots handle the authentication, the testing, and the deployment safely behind the scenes.
