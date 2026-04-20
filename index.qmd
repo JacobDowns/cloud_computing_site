@@ -29,6 +29,7 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lecture 11 — The GCP Compute Continuum](lecture11/index.qmd)
 - [Lecture 12 — The GCP Storage Continuum](lecture12/index.qmd)
 - [Lecture 13 — Identity, Access, and the Zero-Trust Cloud](lecture13/index.qmd)
+- [Lecture 14 — "Day 2" Operations](lecture14/index.qmd)
 
 
 ## Labs ([all](labs.qmd)) {#labs}
