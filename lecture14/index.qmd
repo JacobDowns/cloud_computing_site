@@ -271,7 +271,7 @@ gcloud iam workload-identity-pools create "github-pool" \
 
 ::: {.callout-tip collapse="false"}
 ## Step 2: Build the Handshake Rule (The Provider)
-This tells Google to trust GitHub and specifically map the repository name so we know *which* repo is asking for access.
+creates an OpenID Connect (OIDC) provider in Google Cloud Workload Identity Federation so that GitHub Actions can authenticate to Google Cloud without a long-lived service account key.
 ```bash
 gcloud iam workload-identity-pools providers create-oidc "github-provider" \
     --project="YOUR_PROJECT_ID" \
