@@ -25,7 +25,7 @@ format:
 > How does a team of multiple engineers actually use Terraform to manage a massive corporate cloud? 
 
 ### 1.1 Is Terraform the Industry Standard?
-**Yes.** Terraform is the undisputed heavyweight champion of Infrastructure as Code (IaC). 
+**Yes.** Terraform is currently an industry standard for Infrastructure as Code (IaC). 
 
 - While Google has "Cloud Deployment Manager" and AWS has "CloudFormation," those tools lock you into their specific ecosystem. 
 - Terraform is cloud-agnostic. You can use the exact same HCL (HashiCorp Configuration Language) syntax to build a database in Google Cloud or configure a DNS record in Cloudflare.
