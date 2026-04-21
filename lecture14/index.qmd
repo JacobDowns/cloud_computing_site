@@ -1,5 +1,5 @@
 ---
-title: "Lecture 14: Day 2 Operations — Automation, State, and Event-Driven Cloud"
+title: "Lecture 14: Automation, State, and Event-Driven Cloud"
 format:
   html:
     mermaid: 
@@ -9,12 +9,9 @@ format:
 ::: {.callout-note collapse="false"}
 ## readme.txt — Lecture Objectives
 
--   Today, we'll discuss so-called "Day 2" operations: the period after an app goes live, which focuses on automation and scale. 
-
-> Of course, everything in tech has to have a silly name attached to it. 
-
+-   Today, we'll cover a handful of important topics that didn't quite belong in previous sections. 
 -   We'll discuss **Advanced Terraform**, particularly how teams collaborate without destroying each other's work.
--   We'll elaborate on **Event-Driven Architectures**, particularly how systems talk to each other asynchronously.
+-   We'll elaborate on **Event-Driven Architectures**, particularly how systems talk to each other asynchronously using Pub/Sub.
 -   Lastly, we'll cover **CI/CD pipelines** in GCP.
 :::
 
@@ -22,7 +19,7 @@ format:
 
 ## Part 1: Terraform in Practice (The Real-World Workflow)
 
-- We used Terraform in the last lab to instantly rebuild our Rockhound Vault.
+- We used Terraform in the last lab to quickly rebuild our rockhound vault.
 - Today, we'll look at the question:
 
 > How does a team of multiple engineers actually use Terraform to manage a massive corporate cloud? 
@@ -108,7 +105,7 @@ Now that we understand how teams organize their code in Git, we need to consider
 
 
 
-Production teams **never** store state files on their laptops, and they **never** commit them to Git. Instead, they configure a **Remote Backend**. In Google Cloud, this is usually a highly secure Cloud Storage bucket.
+Production teams typically don't store state files on their laptops, and they **never** commit them to Git. Instead, they configure a **Remote Backend**. In Google Cloud, this is usually a highly secure Cloud Storage bucket.
 
 You add a `backend` block to your code:
 
@@ -147,7 +144,8 @@ In our current Rockhound Vault, the user experience is **Synchronous**:
 
 > This works fine for small files. But what if we wanted our app to automatically identify the mineral in the photo using an AI Vision model, or generate multiple thumbnails for different devices? 
 
-If we do that inside the web server, the user's browser will hang for 10–15 seconds while the AI model runs. If 1,000 users do this at once, the App Engine instances will be tied up doing heavy math instead of serving web pages.
+- If we do that inside the web server, the user's browser will hang for 10–15 seconds while the AI model runs. 
+- If 1,000 users do this at once, the App Engine instances will be tied up doing heavy math instead of serving web pages.
 
 ### 3.1 What is Google Cloud Pub/Sub?
 
@@ -221,7 +219,6 @@ gcloud pubsub subscriptions create analysis-worker-sub \
 
 ## Part 4: Continuous Integration & Deployment (CI/CD)
 
-- The final rule of Day 2 Operations is simple: **Humans should not deploy code.**
 - At some point in the dev process, developers should move away from manually running `gcloud app deploy`.
 - *Why?* A developer might deploy from the wrong git branch, they might deploy code with syntax errors, or their laptop might lose Wi-Fi halfway through and corrupt the deployment. 
 - We solve this by having an automated server (like GitHub Actions) deploy the code for us whenever we push to the `main` branch.
@@ -231,11 +228,12 @@ gcloud pubsub subscriptions create analysis-worker-sub \
 To allow GitHub to deploy code to your Google Cloud project, GitHub needs permissions. 
 
 - **The Old Way:** Historically, developers would create a Google Service Account, download a long-lived JSON key file, and paste that key into GitHub's secrets manager. 
-- This was risky, because if a hacker breaches your GitHub repository or an employee accidentally logs the secret, they instantly gain God-level access to your Google Cloud project.
+- This was risky, because if a hacker breaches your GitHub repository or an employee accidentally logs the secret, they instantly gain access to your Google Cloud project.
 
 ### 4.2 The Modern Standard: Workload Identity Federation
 
-Instead of long-lived passwords, we use **Workload Identity Federation (WIF)**. This allows us to configure Google Cloud to implicitly trust our specific GitHub repository using cryptographic OIDC (OpenID Connect) tokens.
+- Instead of long-lived passwords, we use **Workload Identity Federation (WIF)**. 
+- This allows us to configure Google Cloud to implicitly trust our specific GitHub repository using cryptographic OIDC (OpenID Connect) tokens.
 
 
 
@@ -252,11 +250,12 @@ sequenceDiagram
     AE-->>GH: 5. Deployment Successful!
 ```
 
-**This method requires avoids explicitly downloaded keys or passwords.**
+**This method avoids the need to explicitly download keys or passwords.**
 
 ### 4.3 Building the Bridge (GCP Side)
 
-Workload Identity Federation is not turned on by default. You have to explicitly "build the bridge" in your GCP project to accept GitHub's tokens. This involves creating a "Pool" (to hold external identities), a "Provider" (to trust GitHub), and an IAM binding to link the repo to a Service Account.
+- Workload Identity Federation is not turned on by default. You have to explicitly "build the bridge" in your GCP project to accept GitHub's tokens. 
+- This involves creating a "Pool" (to hold external identities), a "Provider" (to trust GitHub), and an IAM binding to link the repo to a Service Account.
 
 You can set this up using these three `gcloud` commands:
 
