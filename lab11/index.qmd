@@ -1,0 +1,170 @@
+---
+title: "Capstone: Event-Driven Procedural Generation in the Cloud"
+page-layout: full
+include-in-header:
+  text: |
+    <style>
+      /* Stop Quarto's mermaid-init.js from forcing width=100% on the SVG,
+         which scales the whole diagram (and its text) down to container width.
+         Forcing auto sizing lets the SVG render at its intrinsic px size, so
+         per-subtype font sizes (actorFontSize, messageFontSize, etc.) are
+         actually visible. Horizontal scroll on narrow viewports is acceptable. */
+      svg.mermaid-js,
+      figure.figure svg.mermaid-js {
+        width: auto !important;
+        height: auto !important;
+        max-width: none !important;
+      }
+    </style>
+---
+
+
+::: {.callout-note icon=false title="README.txt"}
+
+- For our final lab, you will deploy an event-driven cloud architecture. 
+- Instead of building a simple, monolithic web server that does everything (and crashes when things get heavy), you will build a **decoupled system**.
+- We are going to deploy an application that uses the [**Wave Function Collapse (WFC)**](https://github.com/mxgmn/WaveFunctionCollapse) algorithm
+- WFC is a computationally heavy mathematical process used in game design to procedurally generate maps and textures. 
+- Given 
+- Because this algorithm requires massive amounts of RAM and computation time, it should not be run on a typical web server. 
+:::
+
+### The Architecture & Data Flow
+
+You will wire together several distinct Google Cloud services:
+
+1. **App Engine (The Frontend):** A lightweight web portal where users upload a "seed" image and request a generated world.
+2. **Cloud Storage (The Filing Cabinet):** Two buckets—one to hold the user's input image, and one to hold the final generated map.
+3. **Firestore (The Whiteboard):** A serverless NoSQL database that tracks the status of the generation jobs (e.g., "PENDING", "COMPLETE").
+4. **Pub/Sub (The Queue):** A message broker. The frontend drops a "Work Order" into this queue and immediately returns a loading screen to the user.
+5. **Cloud Run (The Heavy Worker):** An auto-scaling container packed with 8GB of RAM. It listens to the queue, pulls down the work order, runs the heavy Numba/Python math, saves the result, and updates Firestore.
+6. **GitHub Actions (CI/CD):** An automated pipeline that deploys code updates using Zero-Trust security (Workload Identity Federation).
+
+The full data flow is illustrated in this sequence diagram:
+
+```{mermaid}
+%%{init: {
+  "theme": "default",
+  "themeVariables": {
+    "fontFamily": "Helvetica, Arial, sans-serif"
+  },
+  "sequence": {
+    "useMaxWidth": false,
+    "actorFontSize": 30,
+    "actorFontWeight": "bold",
+    "noteFontSize": 26,
+    "messageFontSize": 26,
+    "messageFontWeight": "500",
+    "width": 150,
+    "boxMargin": 24,
+    "boxTextMargin": 10,
+    "noteMargin": 22,
+    "messageMargin": 65,
+    "mirrorActors": true,
+    "wrap": true
+  }
+}}%%
+sequenceDiagram
+    autonumber
+    participant U as User / Browser
+    participant FE as Frontend (App Engine)
+    participant IB as Input Bucket (GCS)
+    participant FS as Firestore (wfc-db)
+    participant PS as Pub/Sub (Work Queue)
+    participant BW as Backend Worker (Cloud Run)
+    participant OB as Output Bucket (GCS)
+
+    Note over U, FE: Phase 1: Job Submission (Sync)
+    U->>FE: Submit Seed Image & Options
+    activate FE
+    FE->>IB: Upload seed.png (job_id)
+    FE->>FS: Create job_id, status: PENDING
+    FE->>PS: Publish Work Order (JSON)
+    FE-->>U: Job ID Queued
+    deactivate FE
+
+    Note over U, FE: Phase 2: Job Polling (Async)
+    loop Every 3 Seconds
+        U->>FE: Poll /status/job_id
+        activate FE
+        FE->>FS: Read job_id status
+        FS-->>FE: Status (PENDING, etc.)
+        FE-->>U: Current Job State
+        deactivate FE
+    end
+
+    Note over PS, BW: Phase 3: Job Processing (Event-Driven)
+    PS-)BW: Push Message (HTTP POST)
+    activate BW
+    Note right of BW: heavy WFC math (Numba-compiled)
+    alt Success
+        BW->>IB: Download seed.png
+        BW->>OB: Upload generated.png
+        BW->>FS: Update status: COMPLETE, output_url
+    else Error / Timeout
+        BW->>FS: Update status: ERROR / TIMED OUT
+    end
+    BW-->>PS: HTTP 200 OK (Ack)
+    deactivate BW
+```
+
+You have been provided the application code (Python, HTML, JavaScript) in the starter repository. Your job is to act as the Cloud Architect: you must provision the infrastructure using Terraform, establish the security bindings, and deploy the services in the correct sequence.
+
+---
+
+## Part 1: Ground Zero - Setup
+
+::: {.callout-important}
+Because of the complexity of this architecture and the strict IAM (Identity and Access Management) rules required for CI/CD, **you must create a brand new Google Cloud Project for this lab.**
+:::
+
+### 1. Create a New GCP Project
+1. Go to the Google Cloud Console.
+2. Create a new project named `wfc-capstone-[YOUR-INITIALS]`.
+3. Ensure billing is linked to this new project.
+4. Open your terminal and authenticate the `gcloud` CLI to this new project:
+   ```bash
+   gcloud auth login
+   gcloud config set project [YOUR_NEW_PROJECT_ID]
+   ```
+
+### 2. Fork and Clone the Starter Repo
+Navigate to the starter repository: `https://github.com/JacobDowns/wfc_cloud`
+1. **Fork** the repository to your own GitHub account.
+2. **Clone** your forked repository to your local machine.
+
+---
+
+## Part 2: Understanding the Infrastructure (Terraform)
+
+Open the `infrastructure/main.tf` file in your cloned repository. Take 5 minutes to read through the resource blocks. Notice how Infrastructure as Code (IaC) defines the relationships between the services:
+
+::: {.callout-tip title="Infrastructure Breakdown"}
+* **The Buckets:** It creates `wfc-inputs` and `wfc-outputs`. Crucially, it attaches an `iam_member` policy to make them publicly readable so the web dashboard can display the images.
+* **The Pub/Sub Queue:** It creates a topic and a "Push Subscription." This tells Google Cloud to actively push messages to your Cloud Run URL whenever a new job arrives.
+* **Zero-Trust Security:** It creates a specific Service Account (`wfc-pubsub-invoker`). The Pub/Sub queue wears this "ID badge" when it talks to Cloud Run, and Cloud Run is configured to *only* accept traffic from this specific badge.
+* **Workload Identity Federation (WIF):** At the bottom, Terraform sets up an OIDC Provider. This allows GitHub Actions to deploy to your GCP project using temporary cryptographic tokens instead of permanent, insecure JSON keys.
+:::
+
+---
+
+## Part 3: The Deployment Sequence
+
+In distributed systems, you encounter "Chicken and Egg" problems. For example: Terraform needs the Cloud Run URL to set up the Pub/Sub push subscription, but you can't run Terraform until you have that URL!
+
+To solve this, we will follow a strict deployment sequence.
+
+### Step 1: Initialize Firestore
+Firestore must be initialized manually once per project. Run this in your terminal:
+```bash
+gcloud firestore databases create --database="wfc-db" --location=us-west1 --type=firestore-native
+```
+
+### Step 2: The Initial Backend Deployment (Manual)
+We need to deploy the backend worker manually this *first* time just to get its public URL. Navigate to the `worker/` directory in your terminal and run:
+
+```bash
+gcloud run deploy wfc-worker \
+    --source . \
+    --region us-west1 \
+    --no-allow-
