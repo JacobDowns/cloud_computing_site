@@ -1,5 +1,5 @@
 ---
-title: "Capstone: Event-Driven Procedural Generation in the Cloud"
+title: "Lab 11: Capstone — Event-Driven Procedural Generation in the Cloud"
 page-layout: full
 include-in-header:
   text: |
@@ -19,17 +19,19 @@ include-in-header:
 ---
 
 
-::: {.callout-note icon=false title="README.txt"}
+::: {.callout-note collapse="false"}
+## readme.txt — Lab Objectives
 
-- For our final lab, you will deploy an event-driven cloud architecture. 
+- For our final lab, you will deploy an event-driven cloud architecture.
 - Instead of building a simple, monolithic web server that does everything (and crashes when things get heavy), you will build a **decoupled system**.
-- We are going to deploy an application that uses the [**Wave Function Collapse (WFC)**](https://github.com/mxgmn/WaveFunctionCollapse) algorithm
-- WFC is a computationally heavy mathematical process used in game design to procedurally generate maps and textures. 
-- Given 
-- Because this algorithm requires massive amounts of RAM and computation time, it should not be run on a typical web server. 
+- We are going to deploy an application that uses the [**Wave Function Collapse (WFC)**](https://github.com/mxgmn/WaveFunctionCollapse) algorithm.
+- WFC is a computationally heavy mathematical algorithm used in game design to procedurally generate maps and textures.
+- Because this algorithm requires massive amounts of RAM and computation time, it should not be run on a typical web server.
 :::
 
-### The Architecture & Data Flow
+------------------------------------------------------------------------
+
+## The Architecture & Data Flow
 
 You will wire together several distinct Google Cloud services:
 
@@ -110,15 +112,17 @@ sequenceDiagram
 
 You have been provided the application code (Python, HTML, JavaScript) in the starter repository. Your job is to act as the Cloud Architect: you must provision the infrastructure using Terraform, establish the security bindings, and deploy the services in the correct sequence.
 
----
+------------------------------------------------------------------------
 
-## Part 1: Ground Zero - Setup
+## Part 1: Ground Zero — Setup
 
-::: {.callout-important}
+::: {.callout-important collapse="false"}
+## A Fresh Project Is Required
+
 Because of the complexity of this architecture and the strict IAM (Identity and Access Management) rules required for CI/CD, **you must create a brand new Google Cloud Project for this lab.**
 :::
 
-### 1. Create a New GCP Project
+### 1.1 Create a New GCP Project
 1. Go to the Google Cloud Console.
 2. Create a new project named `wfc-capstone-[YOUR-INITIALS]`.
 3. Ensure billing is linked to this new project.
@@ -128,43 +132,101 @@ Because of the complexity of this architecture and the strict IAM (Identity and 
    gcloud config set project [YOUR_NEW_PROJECT_ID]
    ```
 
-### 2. Fork and Clone the Starter Repo
+### 1.2 Fork and Clone the Starter Repo
 Navigate to the starter repository: `https://github.com/JacobDowns/wfc_cloud`
+
 1. **Fork** the repository to your own GitHub account.
 2. **Clone** your forked repository to your local machine.
 
----
+------------------------------------------------------------------------
 
 ## Part 2: Understanding the Infrastructure (Terraform)
 
 Open the `infrastructure/main.tf` file in your cloned repository. Take 5 minutes to read through the resource blocks. Notice how Infrastructure as Code (IaC) defines the relationships between the services:
 
-::: {.callout-tip title="Infrastructure Breakdown"}
+::: {.callout-tip collapse="false"}
+## Infrastructure Breakdown
+
 * **The Buckets:** It creates `wfc-inputs` and `wfc-outputs`. Crucially, it attaches an `iam_member` policy to make them publicly readable so the web dashboard can display the images.
 * **The Pub/Sub Queue:** It creates a topic and a "Push Subscription." This tells Google Cloud to actively push messages to your Cloud Run URL whenever a new job arrives.
 * **Zero-Trust Security:** It creates a specific Service Account (`wfc-pubsub-invoker`). The Pub/Sub queue wears this "ID badge" when it talks to Cloud Run, and Cloud Run is configured to *only* accept traffic from this specific badge.
 * **Workload Identity Federation (WIF):** At the bottom, Terraform sets up an OIDC Provider. This allows GitHub Actions to deploy to your GCP project using temporary cryptographic tokens instead of permanent, insecure JSON keys.
 :::
 
----
+------------------------------------------------------------------------
 
 ## Part 3: The Deployment Sequence
 
-In distributed systems, you encounter "Chicken and Egg" problems. For example: Terraform needs the Cloud Run URL to set up the Pub/Sub push subscription, but you can't run Terraform until you have that URL!
+### 3.1 Provision the Infrastructure (Terraform)
+Navigate to the `infrastructure/` directory.
 
-To solve this, we will follow a strict deployment sequence.
+1. Create a file named `terraform.tfvars`.
+2. Add your specific variables:
+   ```hcl
+   project_id    = "your-new-gcp-project-id"
+   cloud_run_url = "https://wfc-worker-xyz.run.app"
+   github_repo   = "YourGitHubUsername/wfc_cloud"
+   ```
+3. Initialize and apply the infrastructure:
+   ```bash
+   terraform init
+   terraform apply
+   ```
 
-### Step 1: Initialize Firestore
-Firestore must be initialized manually once per project. Run this in your terminal:
+::: {.callout-warning collapse="false"}
+## Critical Output Step
+
+When Terraform finishes, look at the bottom of your terminal. It will output two green strings (`github_actions_service_account` and `workload_identity_provider`). Copy these! You need them for the next step.
+:::
+
+### 3.2 Automate the CI/CD Pipeline
+We will now configure GitHub Actions so that future updates are deployed automatically.
+
+1. In your local repository, open `.github/workflows/deploy-frontend.yml` and `.github/workflows/deploy-worker.yml`.
+2. Replace the placeholder strings for `workload_identity_provider` and `service_account` with the green outputs you copied from Terraform.
+3. Commit and push these changes to GitHub.
+4. Go to the **Actions** tab in your GitHub repository. You should see both the frontend and backend deploying automatically!
+
+::: {.callout-note collapse="false"}
+## First-Run Hiccup
+
+If the Cloud Run workflow fails the first time with an "Artifact Registry" error, just click "Re-run all jobs". It sometimes takes a minute for the API we enabled via Terraform to fully activate.
+:::
+
+### 3.3 The Frontend Deployment
+The CI/CD pipeline deployed your backend. Now, let's look at the frontend. The App Engine deployment was handled by GitHub Actions, but you can always find its URL by running this command from anywhere in your terminal:
+
 ```bash
-gcloud firestore databases create --database="wfc-db" --location=us-west1 --type=firestore-native
+gcloud app browse
 ```
 
-### Step 2: The Initial Backend Deployment (Manual)
-We need to deploy the backend worker manually this *first* time just to get its public URL. Navigate to the `worker/` directory in your terminal and run:
+------------------------------------------------------------------------
 
-```bash
-gcloud run deploy wfc-worker \
-    --source . \
-    --region us-west1 \
-    --no-allow-
+## Part 4: Testing the Event-Driven Pipeline
+
+It is time to see the decoupled architecture in action.
+
+1. Open your App Engine frontend in a web browser.
+2. Find a tiny pixel-art texture to use as a seed image. (Search for "16x16 seamless pixel art" on open-source game asset sites like Kenney.nl).
+3. Upload the image, set the patch size to 3, and select an output size (e.g., 128x128).
+4. Click **Add to Queue**.
+
+::: {.callout-tip collapse="false"}
+## What is Happening Behind the Scenes?
+
+* The frontend uploaded the image to Cloud Storage, wrote a "PENDING" document to Firestore, dropped a message into Pub/Sub, and immediately returned you to the dashboard.
+* Your browser is now polling the `/jobs` route every 3 seconds, asking Firestore: *"Is it done yet?"*
+* Meanwhile, Pub/Sub pushed the message to Cloud Run. Cloud Run is currently chewing through gigabytes of RAM to run the JIT-compiled Wave Function Collapse math.
+* When Cloud Run finishes, it saves the image to the output bucket, updates Firestore to "COMPLETE", and your dashboard will instantly update to show the final generated world!
+:::
+
+::: {.callout-note collapse="false"}
+## Lab Submission Requirements
+
+To complete this capstone, please submit:
+
+1. A link to your forked GitHub repository showing the passing GitHub Actions workflows.
+2. The URL to your live App Engine frontend.
+3. A screenshot of your dashboard showing at least two successfully completed WFC generations of different output sizes.
+4. A short paragraph explaining *why* we used Pub/Sub to decouple the frontend from the backend, instead of just having App Engine run the math directly.
+:::
