@@ -44,6 +44,7 @@ Welcome! This site contains weekly notes, examples, labs, and resources.
 - [Lab 8 — Practicing Cloud Run](lab8/index.qmd)
 - [Lab 9 — The Geology Zone (Dealing with Data)](lab9/index.qmd)
 - [Lab 10 — Authentication With IAP](lab10/index.qmd)
+- [Capstone Lab - Wave Function Collapse](lab11/index.qmd)
 
 ## Homeworks ([all](homeworks.qmd)) {#homeworks}
 

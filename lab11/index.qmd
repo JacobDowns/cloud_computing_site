@@ -126,9 +126,9 @@ Because of the complexity of this architecture and the strict IAM (Identity and 
 1. Go to the Google Cloud Console.
 2. Create a new project named `wfc-capstone-[YOUR-INITIALS]`.
 3. Ensure billing is linked to this new project.
-4. Open your terminal and authenticate the `gcloud` CLI to this new project:
+4. Click the **Activate Cloud Shell** icon (the terminal prompt `>_` in the top right corner of the console). We will use Cloud Shell for this lab instead of your local machine because it has Terraform and the Google Cloud CLI pre-installed.
+5. Ensure your Cloud Shell is connected to your new project:
    ```bash
-   gcloud auth login
    gcloud config set project [YOUR_NEW_PROJECT_ID]
    ```
 
@@ -136,7 +136,11 @@ Because of the complexity of this architecture and the strict IAM (Identity and 
 Navigate to the starter repository: `https://github.com/JacobDowns/wfc_cloud`
 
 1. **Fork** the repository to your own GitHub account.
-2. **Clone** your forked repository to your local machine.
+2. **Clone** your forked repository directly into your **Cloud Shell** terminal. Using Cloud Shell means the entire codebase is already in your Google Cloud environment—no copying and pasting files from your local machine required!
+   ```bash
+   git clone [https://github.com/YourGitHubUsername/wfc_cloud.git](https://github.com/YourGitHubUsername/wfc_cloud.git)
+   cd wfc_cloud
+   ```
 
 ------------------------------------------------------------------------
 
@@ -157,14 +161,62 @@ Open the `infrastructure/main.tf` file in your cloned repository. Take 5 minutes
 
 ## Part 3: The Deployment Sequence
 
-### 3.1 Provision the Infrastructure (Terraform)
-Navigate to the `infrastructure/` directory.
+In distributed systems, you encounter "Chicken and Egg" problems. For example: Terraform needs the Cloud Run URL to set up the Pub/Sub push subscription, but you can't run Terraform until you have that URL! We will follow a strict deployment sequence to solve this.
+
+### 3.1 Initialize Firestore
+Firestore must be initialized manually once per project. Run this in Cloud Shell:
+```bash
+gcloud firestore databases create --database="wfc-db" --location=us-west1 --type=firestore-native
+```
+
+### 3.2 The Initial Backend Deployment (Manual)
+We need to deploy the backend worker manually this *first* time just to get its public URL for Terraform. 
+
+::: {.callout-note collapse="false"}
+## The "Secure-by-Default" Fix
+Google Cloud recently updated its security policies so that default service accounts are created with zero permissions. Because `gcloud run deploy` uses Cloud Build behind the scenes, we need to explicitly grant the build account permission to access Cloud Storage and Artifact Registry before we can deploy our code.
+:::
+
+Run these commands sequentially in Cloud Shell:
+
+```bash
+# 1. Enable the required APIs for building from source AND Terraform planning
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com artifactregistry.googleapis.com cloudresourcemanager.googleapis.com
+
+# 2. Grab your Project ID and Project Number
+PROJECT_ID=$(gcloud config get-value project)
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
+
+# 3. Grant the build account permission to read source code and save containers
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --role="roles/artifactregistry.admin"
+
+# 4. Deploy the worker!
+cd worker/
+gcloud run deploy wfc-worker \
+    --source . \
+    --region us-west1 \
+    --no-allow-unauthenticated \
+    --memory 8Gi \
+    --cpu 4 \
+    --timeout 3600 \
+    --set-env-vars PYTHONUNBUFFERED=1
+```
+*When the deployment finishes, copy the resulting Service URL (e.g., `https://wfc-worker-xyz.run.app`).*
+
+### 3.3 Provision the Infrastructure (Terraform)
+Navigate back to the `infrastructure/` directory in Cloud Shell.
 
 1. Create a file named `terraform.tfvars`.
 2. Add your specific variables:
    ```hcl
    project_id    = "your-new-gcp-project-id"
-   cloud_run_url = "https://wfc-worker-xyz.run.app"
+   cloud_run_url = "[https://wfc-worker-xyz.run.app](https://wfc-worker-xyz.run.app)"
    github_repo   = "YourGitHubUsername/wfc_cloud"
    ```
 3. Initialize and apply the infrastructure:
@@ -175,58 +227,106 @@ Navigate to the `infrastructure/` directory.
 
 ::: {.callout-warning collapse="false"}
 ## Critical Output Step
-
-When Terraform finishes, look at the bottom of your terminal. It will output two green strings (`github_actions_service_account` and `workload_identity_provider`). Copy these! You need them for the next step.
+When Terraform finishes, look at the bottom of your terminal. It will output two green strings (`github_actions_service_account` and `workload_identity_provider`). Copy these! You need them for the CI/CD setup later.
 :::
 
-### 3.2 Automate the CI/CD Pipeline
-We will now configure GitHub Actions so that future updates are deployed automatically.
+### 3.4 The Initial Frontend Deployment (Manual)
+Before automating everything, let's deploy the frontend manually to establish a functional baseline. Terraform already initialized the App Engine architecture and granted it the necessary security permissions, so we just need to push the code.
 
-1. In your local repository, open `.github/workflows/deploy-frontend.yml` and `.github/workflows/deploy-worker.yml`.
-2. Replace the placeholder strings for `workload_identity_provider` and `service_account` with the green outputs you copied from Terraform.
-3. Commit and push these changes to GitHub.
-4. Go to the **Actions** tab in your GitHub repository. You should see both the frontend and backend deploying automatically!
+Navigate to the `frontend/` directory in Cloud Shell:
+```bash
+cd ../frontend/
+```
 
-::: {.callout-note collapse="false"}
-## First-Run Hiccup
+Deploy the frontend code:
+```bash
+gcloud app deploy
+```
 
-If the Cloud Run workflow fails the first time with an "Artifact Registry" error, just click "Re-run all jobs". It sometimes takes a minute for the API we enabled via Terraform to fully activate.
-:::
-
-### 3.3 The Frontend Deployment
-The CI/CD pipeline deployed your backend. Now, let's look at the frontend. The App Engine deployment was handled by GitHub Actions, but you can always find its URL by running this command from anywhere in your terminal:
-
+Once deployed, retrieve your live URL:
 ```bash
 gcloud app browse
 ```
 
 ------------------------------------------------------------------------
 
-## Part 4: Testing the Event-Driven Pipeline
+## Part 4: Testing the Baseline Architecture
 
 It is time to see the decoupled architecture in action.
 
-1. Open your App Engine frontend in a web browser.
-2. Find a tiny pixel-art texture to use as a seed image. (Search for "16x16 seamless pixel art" on open-source game asset sites like Kenney.nl).
-3. Upload the image, set the patch size to 3, and select an output size (e.g., 128x128).
+1. Open your App Engine frontend URL in a web browser.
+2. Find a tiny pixel-art texture to use as a seed image. I would recommend using one of the [pixel art images here](https://github.com/mxgmn/WaveFunctionCollapse/tree/master/samples).
+3. Upload the image, set the patch size to 3, and select an output size (e.g., 64x64).
 4. Click **Add to Queue**.
 
 ::: {.callout-tip collapse="false"}
 ## What is Happening Behind the Scenes?
-
 * The frontend uploaded the image to Cloud Storage, wrote a "PENDING" document to Firestore, dropped a message into Pub/Sub, and immediately returned you to the dashboard.
 * Your browser is now polling the `/jobs` route every 3 seconds, asking Firestore: *"Is it done yet?"*
 * Meanwhile, Pub/Sub pushed the message to Cloud Run. Cloud Run is currently chewing through gigabytes of RAM to run the JIT-compiled Wave Function Collapse math.
-* When Cloud Run finishes, it saves the image to the output bucket, updates Firestore to "COMPLETE", and your dashboard will instantly update to show the final generated world!
+* When Cloud Run finishes, it saves the image to the output bucket, updates Firestore to "COMPLETE", and your dashboard will instantly update to show the final generated image!
 :::
 
-::: {.callout-note collapse="false"}
+------------------------------------------------------------------------
+
+## Part 5: Exploring the Infrastructure UI
+
+One of the best ways to understand cloud engineering is to step away from the code and view the raw data flowing through the infrastructure. Let's look under the hood.
+
+### 5.1 The Firestore Database
+1. In the Google Cloud Console search bar at the top, type **Firestore** and click on it.
+2. Click on your `wfc-db` database. 
+3. You should see a collection called `jobs`. Click on it.
+4. Here, you will see the individual JSON-like documents created by your App Engine frontend. Notice the fields: you can see the user's chosen `patch_size`, the job `status` (which should now be `COMPLETE`), and the direct URLs to the resulting images!
+5. Take a screenshot of the entries in your Firestore database. 
+
+### 5.2 The Cloud Storage Buckets
+1. Search for **Cloud Storage** and click on **Buckets**.
+2. You will see the two buckets Terraform created: `wfc-inputs-[PROJECT_ID]` and `wfc-outputs-[PROJECT_ID]`. 
+3. Click into the outputs bucket. You can see the actual `.png` files your Cloud Run worker generated and saved. Because Terraform attached a "publicly readable" IAM policy to this bucket, your frontend dashboard is allowed to display these images directly to users.
+
+### 5.3 The Cloud Run Worker Logs
+1. Search for **Cloud Run** and click on your `wfc-worker` service.
+2. Click on the **Logs** tab near the top.
+3. This is where your backend's Python `print()` statements go! You can see the exact millisecond the Pub/Sub queue woke up the worker, how long the heavy math took to execute, and the moment it successfully uploaded the final result.
+4. Take a screenshot of the cloud run worker logs. 
+
+------------------------------------------------------------------------
+
+## Part 6: Automation & CI/CD
+
+Now that you know the architecture works, let's wire up the CI/CD pipeline so you never have to manually deploy code again. 
+
+### 6.1 Configure GitHub Actions
+1. Open `.github/workflows/deploy-frontend.yml` and `.github/workflows/deploy-worker.yml`.
+2. Replace the placeholder strings for `workload_identity_provider` and `service_account` with the green outputs you copied from Terraform earlier.
+
+### 6.2 Triggering the Auto-Deploy (The Magic)
+Let's prove the pipeline works by making a visible change to the frontend.
+
+1. Open `frontend/templates/index.html` in the Cloud Shell Editor.
+2. Find the `<h1>Wave Function Collapse</h1>` tag near the top and make a change to it. 
+3. Commit and push these changes to GitHub using Cloud Shell:
+   ```bash
+   git add .
+   git commit -m "Configure CI/CD and update title"
+   git push origin main
+   ```
+4. Go to the **Actions** tab in your GitHub repository online. You should see the App Engine deployment running automatically! 
+5. When the action turns green, refresh your live App Engine URL. You should instantly see your new custom title. 
+
+------------------------------------------------------------------------
+
+::: {.callout-important collapse="false"}
 ## Lab Submission Requirements
 
-To complete this capstone, please submit:
+To complete this capstone lab, please submit:
 
 1. A link to your forked GitHub repository showing the passing GitHub Actions workflows.
 2. The URL to your live App Engine frontend.
-3. A screenshot of your dashboard showing at least two successfully completed WFC generations of different output sizes.
-4. A short paragraph explaining *why* we used Pub/Sub to decouple the frontend from the backend, instead of just having App Engine run the math directly.
+3. A screenshot of your dashboard showing your custom `<h1>` title and at least two successfully completed WFC generations of different output sizes.
+4. A screenshot of your Cloud Run worker logs. 
+5. A screenshot of a few entries in the Firestore database. 
+6. A few sentences explaining *why* we used Pub/Sub to decouple the frontend from the backend, instead of just having App Engine run the math directly.
+7. Briefly describe the main componenents of the wave function collapse GitHub repo. You won't need to understand any of the specifics of the code, but in broad terms, what do  directories like `infrastructure`, `frontend`, `worker`, and `.github/workflows`? Broadly speaking, what are the functions of the files in these directories?
 :::
