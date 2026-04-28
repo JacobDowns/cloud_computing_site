@@ -141,7 +141,8 @@ If you need to rebuild our Capstone architecture on a different provider, here i
 ::: {.callout-tip collapse="false"}
 ## The Takeaway
 
--   The tools will constantly change. - AWS will release a new service, Google will rename an old one, and Azure will bundle three things together.
+-   The tools will constantly change.
+-    AWS will release a new service, Google will rename an old one, and Azure will bundle three things together.
 -   **Instead of memorizing a specific tool; internalize the architectural pattern.**
 
 > Because you know *why* a message queue sits between a web server and a background worker, you can successfully build this system on any cloud provider in the world.
