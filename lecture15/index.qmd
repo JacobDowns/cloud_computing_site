@@ -16,7 +16,7 @@ Today, we will very briefly recap what we learned this semster, and discuss some
 
 ## Part 1: What We Built (Semester Recap)
 
-Let's review the fundamental takeaways and shifts in thinking you developed this semester:
+Let's review the fundamental takeaways from this semester.
 
 ### 1. The Cloud Evolution & Shared Responsibility
 
